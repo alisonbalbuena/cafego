@@ -57,6 +57,8 @@ export interface CafeProgram {
   pointsForReward?: number;
   punchesRequired?: number;
   createdAt: number;
+  menuImageUrls?: string[];
+  onlineMenuUrl?: string;
 }
 
 export interface RewardAccount {
@@ -68,6 +70,36 @@ export interface RewardAccount {
   points: number;
   punches: number;
   updatedAt: number;
+}
+
+export interface CafeAnnouncement {
+  id: string;
+  cafeId: string;
+  cafeName: string;
+  message: string;
+  createdAt: number;
+}
+
+export interface MenuItem {
+  id: string;
+  cafeId: string;
+  name: string;
+  description: string;
+  price: number;
+  createdAt: number;
+}
+
+export interface CafeReview {
+  id: string;
+  cafeId: string;
+  uid: string;
+  displayName: string;
+  ambienceRating: number;
+  drinksRating: number;
+  pricesRating: number;
+  environmentRating: number;
+  comment: string;
+  createdAt: number;
 }
 
 export type FriendRequestStatus = 'pending' | 'accepted';

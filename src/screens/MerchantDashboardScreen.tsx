@@ -25,7 +25,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CafeProgram } from '../types';
 import { showAlert } from '../utils/alert';
 
-export default function MerchantDashboardScreen() {
+export default function MerchantDashboardScreen({ navigation }: any) {
   const { user, profile } = useAuth();
   const [program, setProgram] = useState<CafeProgram | null>(null);
   const [loyaltyCode, setLoyaltyCode] = useState('');
@@ -181,6 +181,18 @@ export default function MerchantDashboardScreen() {
         <Text style={styles.rewardDescription}>{program.rewardDescription}</Text>
       </View>
 
+      <View style={styles.linkRow}>
+        <Pressable
+          style={styles.linkButton}
+          onPress={() => navigation.navigate('ManageAnnouncements')}
+        >
+          <Text style={styles.linkButtonText}>📢 Announcements</Text>
+        </Pressable>
+        <Pressable style={styles.linkButton} onPress={() => navigation.navigate('ManageMenu')}>
+          <Text style={styles.linkButtonText}>📋 Menu</Text>
+        </Pressable>
+      </View>
+
       <Text style={styles.label}>Customer's loyalty code</Text>
       <TextInput
         style={styles.input}
@@ -219,9 +231,19 @@ export default function MerchantDashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  programCard: { backgroundColor: '#f6f6f6', borderRadius: 12, padding: 16, marginBottom: 20 },
+  programCard: { backgroundColor: '#f6f6f6', borderRadius: 12, padding: 16, marginBottom: 12 },
   programType: { fontSize: 14, fontWeight: '600' },
   rewardDescription: { fontSize: 13, color: '#666', marginTop: 4 },
+  linkRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  linkButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+  },
+  linkButtonText: { fontSize: 13, fontWeight: '600', color: '#333' },
   label: { fontSize: 13, fontWeight: '600', color: '#666', marginTop: 8, marginBottom: 6 },
   input: {
     borderWidth: 1,

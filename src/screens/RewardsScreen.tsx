@@ -55,7 +55,12 @@ export default function RewardsScreen({ navigation }: any) {
           const goal = isPunchcard ? item.punchesRequired ?? 0 : item.pointsForReward ?? 0;
           const earned = goal > 0 && current >= goal;
           return (
-            <View style={styles.programRow}>
+            <Pressable
+              style={styles.programRow}
+              onPress={() =>
+                navigation.navigate('CafeProfile', { cafeId: item.cafeId, cafeName: item.cafeName })
+              }
+            >
               <View style={{ flex: 1 }}>
                 <Text style={styles.cafeName}>{item.cafeName}</Text>
                 <Text style={styles.rewardDescription}>{item.rewardDescription}</Text>
@@ -67,7 +72,7 @@ export default function RewardsScreen({ navigation }: any) {
                     : `${current} / ${goal} points`}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />
