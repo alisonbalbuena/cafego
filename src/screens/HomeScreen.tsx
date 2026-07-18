@@ -1,18 +1,30 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
-import { CafeAnnouncement, Cafe, StudySession } from '../types';
+import { CafeAnnouncement, Cafe, intensityMeta, isSessionPublic, StudySession } from '../types';
+import { COLORS, RADIUS } from '../theme';
+import SearchBar from '../components/SearchBar';
+import StudyCalendarSection from '../components/StudyCalendarSection';
+import NudgeBanner from '../components/NudgeBanner';
 
 interface Friend {
   uid: string;
   displayName: string;
 }
 
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function HomeScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [search, setSearch] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriends, setActiveFriends] = useState<StudySession[]>([]);
@@ -40,7 +52,10 @@ export default function HomeScreen({ navigation }: any) {
       where('endedAt', '==', null)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setActiveFriends(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+      const docs = snapshot.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as StudySession)
+        .filter(isSessionPublic);
+      setActiveFriends(docs);
     });
     return unsubscribe;
   }, [friends]);
@@ -50,9 +65,11 @@ export default function HomeScreen({ navigation }: any) {
     const uids = [user.uid, ...friends.slice(0, 29).map((f) => f.uid)];
     const q = query(collection(db, 'studySessions'), where('uid', 'in', uids));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as StudySession[];
+      const docs = snapshot.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as StudySession)
+        .filter((s) => s.uid === user.uid || isSessionPublic(s));
       docs.sort((a, b) => b.startedAt - a.startedAt);
-      setRecentSessions(docs.slice(0, 8));
+      setRecentSessions(docs.slice(0, 5));
     });
     return unsubscribe;
   }, [user, friends]);
@@ -102,8 +119,8 @@ export default function HomeScreen({ navigation }: any) {
   if (search.trim()) {
     return (
       <View style={styles.container}>
-        <TextInput
-          style={styles.input}
+        <SearchBar
+          style={{ marginBottom: 16 }}
           placeholder="Search all cafes"
           value={search}
           onChangeText={setSearch}
@@ -115,8 +132,14 @@ export default function HomeScreen({ navigation }: any) {
           ListEmptyComponent={<Text style={styles.emptyText}>No cafes match your search.</Text>}
           renderItem={({ item }) => (
             <Pressable style={styles.cafeRow} onPress={() => openCafe(item)}>
-              <Text style={styles.cafeName}>{item.name}</Text>
-              <Text style={styles.cafeNeighborhood}>{item.neighborhood}</Text>
+              <View style={styles.cafeIconBubble}>
+                <Ionicons name="cafe" size={16} color={COLORS.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cafeName}>{item.name}</Text>
+                <Text style={styles.cafeNeighborhood}>{item.neighborhood}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textFaint} />
             </Pressable>
           )}
         />
@@ -125,65 +148,110 @@ export default function HomeScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.heading}>Home</Text>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
+      <Text style={styles.greeting}>{greeting()} ☕</Text>
+      <Text style={styles.heading}>
+        {profile?.firstName ?? profile?.displayName ?? 'Welcome back'}
+      </Text>
 
-      <TextInput
-        style={styles.input}
+      <NudgeBanner />
+
+      <SearchBar
+        style={{ marginBottom: 16 }}
         placeholder="Search all cafes"
         value={search}
         onChangeText={setSearch}
       />
 
-      <Text style={styles.sectionTitle}>Studying now</Text>
-      {activeFriends.length === 0 ? (
-        <Text style={styles.emptyText}>None of your friends are studying right now.</Text>
-      ) : (
-        activeFriends.map((s) => (
-          <View key={s.id} style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>{s.displayName}</Text>
-              <Text style={styles.rowSubtitle}>
-                📍 {s.cafeName} · {s.subject}
-              </Text>
-            </View>
-            <View style={styles.liveDot} />
-          </View>
-        ))
-      )}
+      <Pressable style={styles.mapButton} onPress={() => navigation.navigate('Map')}>
+        <View style={styles.mapButtonIcon}>
+          <Ionicons name="map" size={18} color={COLORS.white} />
+        </View>
+        <Text style={styles.mapButtonText}>View map — nearby cafes & friends</Text>
+        <Ionicons name="chevron-forward" size={18} color={COLORS.white} />
+      </Pressable>
 
-      <Text style={styles.sectionTitle}>Recent sessions</Text>
-      {recentSessions.length === 0 ? (
-        <Text style={styles.emptyText}>No study sessions yet.</Text>
-      ) : (
-        recentSessions.map((s) => (
-          <View key={s.id} style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.rowTitle}>
-                {s.uid === user?.uid ? 'You' : s.displayName} · {s.cafeName}
-              </Text>
-              <Text style={styles.rowSubtitle}>
-                {s.subject} · {new Date(s.startedAt).toLocaleDateString()}
-              </Text>
+      <View style={styles.sectionHeaderRow}>
+        <Ionicons name="people" size={16} color={COLORS.textMuted} />
+        <Text style={styles.sectionTitle}>Studying now</Text>
+      </View>
+      <View style={styles.card}>
+        {activeFriends.length === 0 ? (
+          <Text style={styles.emptyText}>None of your friends are studying right now.</Text>
+        ) : (
+          activeFriends.map((s, i) => (
+            <View key={s.id} style={[styles.row, i === activeFriends.length - 1 && styles.rowLast]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{s.displayName}</Text>
+                <Text style={styles.rowSubtitle}>
+                  📍 {s.cafeName} · {s.subject}
+                </Text>
+                <View style={styles.intensityPill}>
+                  <Text style={styles.intensityPillText}>
+                    {intensityMeta(s.intensity).emoji} {intensityMeta(s.intensity).label}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.liveDot} />
             </View>
-          </View>
-        ))
-      )}
+          ))
+        )}
+      </View>
 
-      <Text style={styles.sectionTitle}>Announcements</Text>
+      <View style={styles.sectionHeaderRow}>
+        <Ionicons name="time" size={16} color={COLORS.textMuted} />
+        <Text style={styles.sectionTitle}>Recent sessions</Text>
+      </View>
+      <View style={styles.card}>
+        {recentSessions.length === 0 ? (
+          <Text style={styles.emptyText}>No study sessions yet.</Text>
+        ) : (
+          recentSessions.map((s, i) => (
+            <View key={s.id} style={[styles.row, i === recentSessions.length - 1 && styles.rowLast]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>
+                  {s.uid === user?.uid ? 'You' : s.displayName} · {s.cafeName}
+                </Text>
+                <Text style={styles.rowSubtitle}>
+                  {s.subject} · {new Date(s.startedAt).toLocaleDateString()}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </View>
+
+      <View style={styles.sectionHeaderRow}>
+        <Ionicons name="calendar" size={16} color={COLORS.textMuted} />
+        <Text style={styles.sectionTitle}>Your study log</Text>
+      </View>
+      <StudyCalendarSection />
+
+      <View style={styles.sectionHeaderRow}>
+        <Ionicons name="megaphone" size={16} color={COLORS.textMuted} />
+        <Text style={styles.sectionTitle}>Announcements</Text>
+      </View>
       {announcements.length === 0 ? (
-        <Text style={styles.emptyText}>
-          Visit a cafe with a rewards program to see their announcements here.
-        </Text>
+        <View style={styles.card}>
+          <Text style={styles.emptyText}>
+            Visit a cafe with a rewards program to see their announcements here.
+          </Text>
+        </View>
       ) : (
         announcements.map((a) => (
-          <View key={a.id} style={styles.announcementCard}>
+          <Pressable
+            key={a.id}
+            style={styles.announcementCard}
+            onPress={() =>
+              navigation.navigate('CafeProfile', { cafeId: a.cafeId, cafeName: a.cafeName })
+            }
+          >
             <Text style={styles.announcementCafe}>{a.cafeName}</Text>
             <Text style={styles.announcementMessage}>{a.message}</Text>
             <Text style={styles.announcementDate}>
               {new Date(a.createdAt).toLocaleDateString()}
             </Text>
-          </View>
+          </Pressable>
         ))
       )}
     </ScrollView>
@@ -191,33 +259,88 @@ export default function HomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-    marginBottom: 16,
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
+  greeting: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted },
+  heading: { fontSize: 26, fontWeight: '700', color: COLORS.text, marginBottom: 16 },
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    padding: 14,
+    marginBottom: 8,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 16, marginBottom: 8 },
-  emptyText: { color: '#999', marginBottom: 8 },
+  mapButtonIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 14, flex: 1 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    paddingHorizontal: 14,
+  },
+  emptyText: { color: COLORS.textFaint, paddingVertical: 14 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  rowLast: { borderBottomWidth: 0 },
+  rowTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  rowSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  intensityPill: {
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 20,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  intensityPillText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
+  liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.success },
+  announcementCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    marginBottom: 10,
+  },
+  announcementCafe: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  announcementMessage: { fontSize: 13, marginTop: 4, color: COLORS.text },
+  announcementDate: { fontSize: 11, color: COLORS.textFaint, marginTop: 6 },
+  cafeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: COLORS.borderLight,
   },
-  rowTitle: { fontSize: 14, fontWeight: '600' },
-  rowSubtitle: { fontSize: 12, color: '#666', marginTop: 2 },
-  liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#2a7a2a' },
-  announcementCard: { backgroundColor: '#f6f6f6', borderRadius: 12, padding: 14, marginBottom: 10 },
-  announcementCafe: { fontSize: 13, fontWeight: '700' },
-  announcementMessage: { fontSize: 13, marginTop: 4 },
-  announcementDate: { fontSize: 11, color: '#999', marginTop: 6 },
-  cafeRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  cafeName: { fontSize: 15, fontWeight: '500' },
-  cafeNeighborhood: { fontSize: 12, color: '#888' },
+  cafeIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cafeName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted },
 });

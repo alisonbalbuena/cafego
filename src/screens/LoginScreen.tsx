@@ -8,8 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
+import { COLORS, RADIUS } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn } = useAuth();
@@ -37,24 +39,35 @@ export default function LoginScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={styles.logoBubble}>
+        <Ionicons name="cafe" size={32} color={COLORS.white} />
+      </View>
       <Text style={styles.title}>Study Cafe</Text>
       <Text style={styles.subtitle}>Find your friends. Find your cafe.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View style={styles.inputWrap}>
+        <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor={COLORS.textFaint}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+      </View>
+      <View style={styles.inputWrap}>
+        <Ionicons name="lock-closed-outline" size={18} color={COLORS.textMuted} />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          placeholderTextColor={COLORS.textFaint}
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+      </View>
 
       <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Logging in…' : 'Log in'}</Text>
@@ -68,24 +81,38 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 32, fontWeight: '700', textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 32 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
+  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: COLORS.bg },
+  logoBubble: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 16,
   },
+  title: { fontSize: 32, fontWeight: '700', textAlign: 'center', color: COLORS.text },
+  subtitle: { fontSize: 14, color: COLORS.textMuted, textAlign: 'center', marginBottom: 32 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: COLORS.text },
   button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
     padding: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  link: { color: '#555', textAlign: 'center', marginTop: 16 },
+  buttonText: { color: COLORS.white, fontWeight: '600', fontSize: 16 },
+  link: { color: COLORS.textMuted, textAlign: 'center', marginTop: 16 },
 });

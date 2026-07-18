@@ -23,6 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
 import { CafeAnnouncement } from '../types';
 import { showAlert } from '../utils/alert';
+import { COLORS } from '../theme';
 
 export default function ManageAnnouncementsScreen() {
   const { profile } = useAuth();
@@ -116,11 +117,11 @@ export default function ManageAnnouncementsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   button: {
-    backgroundColor: '#111',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
@@ -141,10 +142,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: COLORS.borderLight,
   },
   message: { fontSize: 14 },
-  date: { fontSize: 11, color: '#999', marginTop: 4 },
-  delete: { color: '#c0392b', fontSize: 13, fontWeight: '600', marginLeft: 12 },
-  emptyText: { color: '#999', textAlign: 'center', marginTop: 12 },
+  date: { fontSize: 11, color: COLORS.textFaint, marginTop: 4 },
+  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600', marginLeft: 12 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12 },
 });

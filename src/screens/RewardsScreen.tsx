@@ -4,6 +4,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, RewardAccount } from '../types';
+import { VERIFICATION_CONTACT } from '../constants';
+import { COLORS } from '../theme';
 
 export default function RewardsScreen({ navigation }: any) {
   const { user, profile } = useAuth();
@@ -41,9 +43,18 @@ export default function RewardsScreen({ navigation }: any) {
         <Text style={styles.codeHint}>Show this to the cashier to earn rewards</Text>
       </View>
 
+      {profile?.pendingCafeId && (
+        <View style={styles.pendingCard}>
+          <Text style={styles.pendingText}>
+            Your cafe claim is awaiting verification — contact {VERIFICATION_CONTACT} to confirm
+            ownership.
+          </Text>
+        </View>
+      )}
+
       <FlatList
         style={{ flex: 1 }}
-        data={programs}
+        data={programs.filter((p) => p.status !== 'pending')}
         keyExtractor={(item) => item.cafeId}
         ListEmptyComponent={
           <Text style={styles.emptyText}>No cafes have set up rewards yet.</Text>
@@ -55,29 +66,28 @@ export default function RewardsScreen({ navigation }: any) {
           const goal = isPunchcard ? item.punchesRequired ?? 0 : item.pointsForReward ?? 0;
           const earned = goal > 0 && current >= goal;
           return (
-            <Pressable
-              style={styles.programRow}
-              onPress={() =>
-                navigation.navigate('CafeProfile', { cafeId: item.cafeId, cafeName: item.cafeName })
-              }
-            >
+            <View style={styles.programRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.cafeName}>{item.cafeName}</Text>
                 <Text style={styles.rewardDescription}>{item.rewardDescription}</Text>
                 <Text style={[styles.progress, earned && styles.progressEarned]}>
                   {earned
-                    ? '🎉 Reward ready — redeem at checkout'
+                    ? account?.rewardExpiresAt
+                      ? `🎉 Reward ready — redeem by ${new Date(
+                          account.rewardExpiresAt
+                        ).toLocaleDateString()}`
+                      : '🎉 Reward ready — redeem at checkout'
                     : isPunchcard
                     ? `${current} / ${goal} punches`
                     : `${current} / ${goal} points`}
                 </Text>
               </View>
-            </Pressable>
+            </View>
           );
         }}
       />
 
-      {profile?.role === 'customer' && (
+      {profile?.role === 'customer' && !profile.pendingCafeId && (
         <Pressable
           style={styles.merchantButton}
           onPress={() => navigation.navigate('ClaimCafe')}
@@ -90,36 +100,43 @@ export default function RewardsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
   codeCard: {
-    backgroundColor: '#111',
+    backgroundColor: COLORS.primary,
     borderRadius: 14,
     padding: 20,
     alignItems: 'center',
     marginBottom: 20,
   },
-  codeLabel: { color: '#aaa', fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
+  codeLabel: { color: COLORS.textFaint, fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
   code: { color: '#fff', fontSize: 32, fontWeight: '700', letterSpacing: 4, marginVertical: 6 },
-  codeHint: { color: '#aaa', fontSize: 12 },
+  codeHint: { color: COLORS.textFaint, fontSize: 12 },
   programRow: {
     flexDirection: 'row',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: COLORS.borderLight,
   },
   cafeName: { fontSize: 16, fontWeight: '600' },
-  rewardDescription: { fontSize: 13, color: '#666', marginTop: 2 },
-  progress: { fontSize: 13, color: '#2a7a2a', fontWeight: '600', marginTop: 6 },
-  progressEarned: { color: '#c0862a' },
-  emptyText: { color: '#999', textAlign: 'center', marginTop: 24 },
+  rewardDescription: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
+  progress: { fontSize: 13, color: COLORS.success, fontWeight: '600', marginTop: 6 },
+  progressEarned: { color: COLORS.accent },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
   merchantButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
     marginTop: 12,
   },
-  merchantButtonText: { color: '#333', fontWeight: '600', fontSize: 14 },
+  merchantButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14 },
+  pendingCard: {
+    backgroundColor: '#fff6e6',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 12,
+  },
+  pendingText: { fontSize: 13, color: '#7a5a1a', lineHeight: 18 },
 });

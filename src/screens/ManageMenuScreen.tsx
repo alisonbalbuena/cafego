@@ -29,6 +29,7 @@ import { db, storage } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, MenuItem } from '../types';
 import { showAlert } from '../utils/alert';
+import { COLORS } from '../theme';
 
 export default function ManageMenuScreen() {
   const { profile } = useAuth();
@@ -240,19 +241,19 @@ export default function ManageMenuScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 8 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
     marginBottom: 8,
   },
   button: {
-    backgroundColor: '#111',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
@@ -262,15 +263,15 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
     marginBottom: 8,
   },
-  secondaryButtonText: { color: '#333', fontWeight: '600', fontSize: 14 },
+  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14 },
   photoWrap: { marginRight: 8, position: 'relative' },
-  photo: { width: 100, height: 100, borderRadius: 10, backgroundColor: '#f0f0f0' },
+  photo: { width: 100, height: 100, borderRadius: 10, backgroundColor: COLORS.card },
   removePhoto: {
     position: 'absolute',
     top: 4,
@@ -288,11 +289,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: COLORS.borderLight,
   },
   itemName: { fontSize: 14, fontWeight: '600' },
-  itemDescription: { fontSize: 12, color: '#666', marginTop: 2 },
+  itemDescription: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   itemPrice: { fontSize: 14, fontWeight: '600', marginRight: 12 },
-  delete: { color: '#c0392b', fontSize: 13, fontWeight: '600' },
-  emptyText: { color: '#999', textAlign: 'center', marginTop: 12 },
+  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600' },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12 },
 });

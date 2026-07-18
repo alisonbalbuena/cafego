@@ -38,24 +38,33 @@ export type UserRole = 'customer' | 'merchant';
 export interface UserProfile {
   uid: string;
   displayName: string;
+  firstName: string;
+  lastName: string;
+  username: string;
+  bio?: string;
   email: string;
   createdAt: number;
   role: UserRole;
   loyaltyCode: string;
   merchantCafeId?: string;
+  pendingCafeId?: string;
+  photoUrl?: string;
 }
 
 export type LoyaltyProgramType = 'points' | 'punchcard';
+export type CafeProgramStatus = 'pending' | 'approved';
 
 export interface CafeProgram {
   cafeId: string;
   cafeName: string;
   ownerUid: string;
+  status: CafeProgramStatus;
   type: LoyaltyProgramType;
   rewardDescription: string;
   pointsPerDollar?: number;
   pointsForReward?: number;
   punchesRequired?: number;
+  expiryDays: number;
   createdAt: number;
   menuImageUrls?: string[];
   onlineMenuUrl?: string;
@@ -69,6 +78,8 @@ export interface RewardAccount {
   displayName: string;
   points: number;
   punches: number;
+  rewardEarnedAt?: number;
+  rewardExpiresAt?: number;
   updatedAt: number;
 }
 
@@ -108,10 +119,42 @@ export interface FriendRequest {
   id: string;
   fromUid: string;
   fromDisplayName: string;
+  fromUsername?: string;
   toUid: string;
   toDisplayName: string;
+  toUsername?: string;
   status: FriendRequestStatus;
   createdAt: number;
+}
+
+export type SessionVisibility = 'public' | 'private';
+
+export type StudyIntensity = 'chilling' | 'working' | 'locked_in';
+
+export const STUDY_INTENSITIES: { value: StudyIntensity; label: string; emoji: string }[] = [
+  { value: 'chilling', label: 'Chilling', emoji: '😌' },
+  { value: 'working', label: 'Attempting to do work', emoji: '📝' },
+  { value: 'locked_in', label: 'MEGA locked in', emoji: '🔒' },
+];
+
+export function intensityMeta(intensity?: StudyIntensity) {
+  return STUDY_INTENSITIES.find((i) => i.value === intensity) ?? STUDY_INTENSITIES[1];
+}
+
+export type StudyMode = 'solo' | 'group';
+
+export interface StudyBuddy {
+  uid: string;
+  displayName: string;
+}
+
+export type DistractionMode = 'allowed' | 'blocked';
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+  photoUrl?: string;
 }
 
 export interface StudySession {
@@ -123,4 +166,34 @@ export interface StudySession {
   subject: Subject;
   startedAt: number;
   endedAt: number | null;
+  visibility?: SessionVisibility;
+  intensity?: StudyIntensity;
+  amountSpent?: number;
+  studyMode?: StudyMode;
+  withFriends?: StudyBuddy[];
+  distractionMode?: DistractionMode;
+  checklist?: ChecklistItem[];
+  myCode?: string;
+  locked?: boolean;
+}
+
+export function isSessionPublic(session: StudySession): boolean {
+  return session.visibility !== 'private';
+}
+
+export interface StudyNote {
+  uid: string;
+  displayName: string;
+  text: string;
+  createdAt: number;
+}
+
+export const NOTE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface Nudge {
+  id: string;
+  fromUid: string;
+  fromDisplayName: string;
+  toUid: string;
+  createdAt: number;
 }

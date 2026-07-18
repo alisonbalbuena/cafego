@@ -3,10 +3,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
+import { LockProvider, useActiveLock } from '../hooks/useActiveLock';
+import LockOverlay from '../components/LockOverlay';
+import { COLORS } from '../theme';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
+import MapScreen from '../screens/MapScreen';
 import CheckInScreen from '../screens/CheckInScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import RewardsScreen from '../screens/RewardsScreen';
@@ -15,12 +20,17 @@ import CafeProfileScreen from '../screens/CafeProfileScreen';
 import MerchantDashboardScreen from '../screens/MerchantDashboardScreen';
 import ManageAnnouncementsScreen from '../screens/ManageAnnouncementsScreen';
 import ManageMenuScreen from '../screens/ManageMenuScreen';
+import AdminScreen from '../screens/AdminScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import { ADMIN_EMAIL } from '../constants';
 
 const AuthStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
 const RewardsStack = createNativeStackNavigator();
 const MyCafeStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 
 function AuthNavigator() {
   return (
@@ -36,6 +46,7 @@ function HomeNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="CafeProfile" component={CafeProfileScreen} />
+      <HomeStack.Screen name="Map" component={MapScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -45,7 +56,6 @@ function RewardsNavigator() {
     <RewardsStack.Navigator screenOptions={{ headerShown: false }}>
       <RewardsStack.Screen name="RewardsHome" component={RewardsScreen} />
       <RewardsStack.Screen name="ClaimCafe" component={ClaimCafeScreen} />
-      <RewardsStack.Screen name="CafeProfile" component={CafeProfileScreen} />
     </RewardsStack.Navigator>
   );
 }
@@ -60,17 +70,62 @@ function MyCafeNavigator() {
   );
 }
 
+function ProfileNavigator() {
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
+      <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+    </ProfileStack.Navigator>
+  );
+}
+
+const TAB_ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Ionicons.glyphMap]> = {
+  Home: ['home', 'home-outline'],
+  Study: ['book', 'book-outline'],
+  Friends: ['people', 'people-outline'],
+  Rewards: ['gift', 'gift-outline'],
+  'My Cafe': ['cafe', 'cafe-outline'],
+  Admin: ['shield-checkmark', 'shield-checkmark-outline'],
+  Profile: ['person-circle', 'person-circle-outline'],
+};
+
 function MainNavigator() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
+  const { isLocked } = useActiveLock();
   const isMerchant = profile?.role === 'merchant' && !!profile.merchantCafeId;
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
+  if (isLocked) {
+    return <LockOverlay />;
+  }
 
   return (
-    <MainTabs.Navigator screenOptions={{ headerShown: false }}>
+    <MainTabs.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.textFaint,
+        tabBarStyle: {
+          backgroundColor: COLORS.surface,
+          borderTopColor: COLORS.border,
+          height: 84,
+          paddingTop: 8,
+          paddingBottom: 28,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarIcon: ({ focused, color, size }) => {
+          const [filled, outline] = TAB_ICONS[route.name] ?? ['ellipse', 'ellipse-outline'];
+          return <Ionicons name={focused ? filled : outline} size={size} color={color} />;
+        },
+      })}
+    >
       <MainTabs.Screen name="Home" component={HomeNavigator} />
       <MainTabs.Screen name="Study" component={CheckInScreen} />
       <MainTabs.Screen name="Friends" component={FriendsScreen} />
       <MainTabs.Screen name="Rewards" component={RewardsNavigator} />
       {isMerchant && <MainTabs.Screen name="My Cafe" component={MyCafeNavigator} />}
+      {isAdmin && <MainTabs.Screen name="Admin" component={AdminScreen} />}
+      <MainTabs.Screen name="Profile" component={ProfileNavigator} />
     </MainTabs.Navigator>
   );
 }
@@ -88,7 +143,13 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {user ? <MainNavigator /> : <AuthNavigator />}
+      {user ? (
+        <LockProvider>
+          <MainNavigator />
+        </LockProvider>
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }

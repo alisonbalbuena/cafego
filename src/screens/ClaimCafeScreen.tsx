@@ -15,9 +15,12 @@ import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
 import { Cafe, LoyaltyProgramType } from '../types';
 import { showAlert } from '../utils/alert';
+import { VERIFICATION_CONTACT } from '../constants';
+import { COLORS } from '../theme';
+import SearchBar from '../components/SearchBar';
 
 export default function ClaimCafeScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [selectedCafe, setSelectedCafe] = useState<Cafe | null>(null);
@@ -26,6 +29,7 @@ export default function ClaimCafeScreen({ navigation }: any) {
   const [pointsPerDollar, setPointsPerDollar] = useState('1');
   const [pointsForReward, setPointsForReward] = useState('100');
   const [rewardDescription, setRewardDescription] = useState('');
+  const [expiryDays, setExpiryDays] = useState('30');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -57,8 +61,10 @@ export default function ClaimCafeScreen({ navigation }: any) {
         cafeId: selectedCafe.id,
         cafeName: selectedCafe.name,
         ownerUid: user.uid,
+        status: 'pending',
         type: programType,
         rewardDescription: rewardDescription.trim(),
+        expiryDays: Number(expiryDays) || 30,
         ...(programType === 'punchcard'
           ? { punchesRequired: Number(punchesRequired) || 10 }
           : {
@@ -68,9 +74,12 @@ export default function ClaimCafeScreen({ navigation }: any) {
         createdAt: serverTimestamp(),
       });
       await updateDoc(doc(db, 'users', user.uid), {
-        role: 'merchant',
-        merchantCafeId: selectedCafe.id,
+        pendingCafeId: selectedCafe.id,
       });
+      showAlert(
+        'Claim submitted',
+        `To verify you own ${selectedCafe.name}, contact ${VERIFICATION_CONTACT}. Your rewards program will go live once verified.`
+      );
       navigation.goBack();
     } catch (err: any) {
       showAlert('Could not set up program', err.message);
@@ -79,12 +88,24 @@ export default function ClaimCafeScreen({ navigation }: any) {
     }
   };
 
+  if (profile?.pendingCafeId) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.heading}>Verification pending</Text>
+        <Text style={styles.pendingText}>
+          Your claim is awaiting verification. Contact {VERIFICATION_CONTACT} to confirm you own
+          this cafe — your rewards program will go live once approved.
+        </Text>
+      </View>
+    );
+  }
+
   if (!selectedCafe) {
     return (
       <View style={styles.container}>
         <Text style={styles.heading}>Which cafe do you own?</Text>
-        <TextInput
-          style={styles.input}
+        <SearchBar
+          style={{ marginBottom: 8 }}
           placeholder="Search cafes (e.g. Duluth, Alchemist)"
           value={search}
           onChangeText={setSearch}
@@ -175,6 +196,14 @@ export default function ClaimCafeScreen({ navigation }: any) {
         onChangeText={setRewardDescription}
       />
 
+      <Text style={styles.label}>Days to redeem once earned</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="number-pad"
+        value={expiryDays}
+        onChangeText={setExpiryDays}
+      />
+
       <Pressable style={styles.button} onPress={submit} disabled={submitting}>
         <Text style={styles.buttonText}>{submitting ? 'Saving…' : 'Launch program'}</Text>
       </Pressable>
@@ -183,21 +212,21 @@ export default function ClaimCafeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: '#666', marginTop: 12, marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
   },
-  cafeRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  cafeRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
   cafeName: { fontSize: 15, fontWeight: '500' },
-  cafeNeighborhood: { fontSize: 12, color: '#888' },
+  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted },
   selectedPill: {
-    backgroundColor: '#eef',
+    backgroundColor: COLORS.accentLight,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
@@ -208,21 +237,22 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  chipSelected: { backgroundColor: '#111', borderColor: '#111' },
-  chipText: { fontSize: 13, color: '#333' },
+  chipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  chipText: { fontSize: 13, color: COLORS.text },
   chipTextSelected: { color: '#fff' },
   button: {
-    backgroundColor: '#111',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
     marginTop: 20,
   },
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  emptyText: { color: '#999', textAlign: 'center', marginTop: 24 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
+  pendingText: { fontSize: 15, color: COLORS.text, lineHeight: 22 },
 });

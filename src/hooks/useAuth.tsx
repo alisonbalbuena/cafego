@@ -41,11 +41,30 @@ async function generateUniqueLoyaltyCode(): Promise<string> {
   return `${randomLoyaltyCode()}${Date.now().toString(36).slice(-2)}`.toUpperCase();
 }
 
+export async function generateUniqueUsername(firstName: string, lastName: string): Promise<string> {
+  const base =
+    `${firstName}${lastName}`.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = attempt === 0 ? base : `${base}${Math.floor(Math.random() * 10000)}`;
+    const existing = await getDocs(
+      query(collection(db, 'users'), where('username', '==', candidate))
+    );
+    if (existing.empty) return candidate;
+  }
+  return `${base}${Date.now().toString(36).slice(-4)}`;
+}
+
 interface AuthContextValue {
   user: User | null;
   profile: UserProfile | null;
   initializing: boolean;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    username: string
+  ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -73,12 +92,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
       if (!snapshot.exists()) return;
       const data = snapshot.data() as Partial<UserProfile>;
-      if (!data.role || !data.loyaltyCode) {
-        // Backfill accounts created before role/loyaltyCode existed on the user doc.
+      if (!data.role || !data.loyaltyCode || !data.username || !data.firstName) {
+        // Backfill accounts created before these fields existed on the user doc.
+        const [fallbackFirst, ...rest] = (data.displayName ?? 'User').split(' ');
+        const firstName = data.firstName ?? fallbackFirst ?? 'User';
+        const lastName = data.lastName ?? rest.join(' ');
         const loyaltyCode = data.loyaltyCode ?? (await generateUniqueLoyaltyCode());
+        const username = data.username ?? (await generateUniqueUsername(firstName, lastName));
         await setDoc(
           doc(db, 'users', user.uid),
-          { role: data.role ?? 'customer', loyaltyCode },
+          {
+            role: data.role ?? 'customer',
+            loyaltyCode,
+            firstName,
+            lastName,
+            username,
+            bio: data.bio ?? '',
+          },
           { merge: true }
         );
         return;
@@ -88,13 +118,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, [user]);
 
-  const signUp = async (email: string, password: string, displayName: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    firstName: string,
+    lastName: string,
+    username: string
+  ) => {
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!cleanUsername) {
+      throw new Error('Username can only contain letters, numbers, and underscores.');
+    }
+
     const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+    // Username uniqueness can only be checked once signed in, since reads require auth.
+    // If it's taken, undo the just-created account rather than leaving an orphaned one.
+    const existing = await getDocs(
+      query(collection(db, 'users'), where('username', '==', cleanUsername))
+    );
+    if (!existing.empty) {
+      await credential.user.delete();
+      throw new Error('That username is already taken.');
+    }
+
+    const displayName = `${firstName} ${lastName}`.trim();
     await updateProfile(credential.user, { displayName });
     const loyaltyCode = await generateUniqueLoyaltyCode();
     await setDoc(doc(db, 'users', credential.user.uid), {
       uid: credential.user.uid,
       displayName,
+      firstName,
+      lastName,
+      username: cleanUsername,
+      bio: '',
       email,
       createdAt: serverTimestamp(),
       role: 'customer',

@@ -11,14 +11,14 @@ export default function StarRating({ value, onChange, size = 20 }: StarRatingPro
   const rounded = Math.round(value);
   return (
     <View style={styles.row}>
-      {[1, 2, 3, 4, 5].map((star) =>
+      {[1, 2, 3, 4, 5].map((cup) =>
         onChange ? (
-          <Pressable key={star} onPress={() => onChange(star)} hitSlop={4}>
-            <Text style={{ fontSize: size, color: star <= rounded ? '#c0862a' : '#ddd' }}>★</Text>
+          <Pressable key={cup} onPress={() => onChange(cup)} hitSlop={4}>
+            <Text style={{ fontSize: size, opacity: cup <= rounded ? 1 : 0.25 }}>☕</Text>
           </Pressable>
         ) : (
-          <Text key={star} style={{ fontSize: size, color: star <= rounded ? '#c0862a' : '#ddd' }}>
-            ★
+          <Text key={cup} style={{ fontSize: size, opacity: cup <= rounded ? 1 : 0.25 }}>
+            ☕
           </Text>
         )
       )}

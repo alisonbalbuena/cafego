@@ -13,17 +13,18 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   onSnapshot,
   query,
-  serverTimestamp,
   setDoc,
   where,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
-import { CafeProgram } from '../types';
+import { CafeProgram, RewardAccount } from '../types';
 import { showAlert } from '../utils/alert';
+import { COLORS } from '../theme';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function MerchantDashboardScreen({ navigation }: any) {
   const { user, profile } = useAuth();
@@ -54,6 +55,17 @@ export default function MerchantDashboardScreen({ navigation }: any) {
       showAlert('Missing code', "Enter the customer's loyalty code.");
       return;
     }
+    let delta = 0;
+    if (program.type === 'points') {
+      const spent = Number(amountSpent);
+      if (!spent || spent <= 0) {
+        showAlert('Missing amount', 'Enter how much the customer spent.');
+        return;
+      }
+      delta = Math.round(spent * (program.pointsPerDollar ?? 1));
+    } else {
+      delta = 1;
+    }
     setSubmitting(true);
     try {
       const customer = await findCustomerByCode(loyaltyCode);
@@ -62,45 +74,48 @@ export default function MerchantDashboardScreen({ navigation }: any) {
         return;
       }
       const accountId = `${program.cafeId}_${customer.uid}`;
-      if (program.type === 'punchcard') {
-        await setDoc(
-          doc(db, 'rewardAccounts', accountId),
-          {
-            id: accountId,
-            cafeId: program.cafeId,
-            cafeName: program.cafeName,
-            uid: customer.uid,
-            displayName: customer.displayName,
-            punches: increment(1),
-            points: increment(0),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-        showAlert('Punch added', `${customer.displayName} now has one more punch.`);
-      } else {
-        const spent = Number(amountSpent);
-        if (!spent || spent <= 0) {
-          showAlert('Missing amount', 'Enter how much the customer spent.');
-          return;
-        }
-        const pointsToAdd = Math.round(spent * (program.pointsPerDollar ?? 1));
-        await setDoc(
-          doc(db, 'rewardAccounts', accountId),
-          {
-            id: accountId,
-            cafeId: program.cafeId,
-            cafeName: program.cafeName,
-            uid: customer.uid,
-            displayName: customer.displayName,
-            points: increment(pointsToAdd),
-            punches: increment(0),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-        showAlert('Points added', `${customer.displayName} earned ${pointsToAdd} points.`);
+      const accountSnap = await getDoc(doc(db, 'rewardAccounts', accountId));
+      const existing = accountSnap.exists() ? (accountSnap.data() as RewardAccount) : null;
+      const now = Date.now();
+      const isPunchcard = program.type === 'punchcard';
+      const goal = isPunchcard ? program.punchesRequired ?? 0 : program.pointsForReward ?? 0;
+
+      // A reward that expired without being redeemed is void — reset before adding new progress.
+      const expired = !!existing?.rewardExpiresAt && existing.rewardExpiresAt < now;
+      let currentValue = (isPunchcard ? existing?.punches : existing?.points) ?? 0;
+      if (expired) currentValue = 0;
+
+      const previousValue = currentValue;
+      const newValue = currentValue + delta;
+      const justEarned = previousValue < goal && newValue >= goal;
+
+      const updates: Record<string, any> = {
+        id: accountId,
+        cafeId: program.cafeId,
+        cafeName: program.cafeName,
+        uid: customer.uid,
+        displayName: customer.displayName,
+        [isPunchcard ? 'punches' : 'points']: newValue,
+        updatedAt: now,
+      };
+      if (expired) updates[isPunchcard ? 'points' : 'punches'] = 0;
+      if (justEarned) {
+        updates.rewardEarnedAt = now;
+        updates.rewardExpiresAt = now + program.expiryDays * DAY_MS;
       }
+
+      await setDoc(doc(db, 'rewardAccounts', accountId), updates, { merge: true });
+
+      const unit = isPunchcard ? 'punches' : 'points';
+      const base = `${customer.displayName} now has ${newValue} ${unit}.`;
+      showAlert(
+        isPunchcard ? 'Punch added' : 'Points added',
+        justEarned
+          ? `${base} Reward earned — redeemable until ${new Date(
+              updates.rewardExpiresAt
+            ).toLocaleDateString()}.`
+          : base
+      );
       setLoyaltyCode('');
       setAmountSpent('');
     } catch (err: any) {
@@ -125,16 +140,38 @@ export default function MerchantDashboardScreen({ navigation }: any) {
       }
       const accountId = `${program.cafeId}_${customer.uid}`;
       const accountSnap = await getDoc(doc(db, 'rewardAccounts', accountId));
-      const account = accountSnap.exists() ? accountSnap.data() : { points: 0, punches: 0 };
-      const goal =
-        program.type === 'punchcard' ? program.punchesRequired ?? 0 : program.pointsForReward ?? 0;
-      const current = program.type === 'punchcard' ? account.punches ?? 0 : account.points ?? 0;
+      const account = accountSnap.exists() ? (accountSnap.data() as RewardAccount) : null;
+      const isPunchcard = program.type === 'punchcard';
+      const goal = isPunchcard ? program.punchesRequired ?? 0 : program.pointsForReward ?? 0;
+      const current = (isPunchcard ? account?.punches : account?.points) ?? 0;
+      const now = Date.now();
+
+      if (account?.rewardExpiresAt && account.rewardExpiresAt < now && current >= goal) {
+        await setDoc(
+          doc(db, 'rewardAccounts', accountId),
+          {
+            punches: 0,
+            points: 0,
+            rewardEarnedAt: null,
+            rewardExpiresAt: null,
+            updatedAt: now,
+          },
+          { merge: true }
+        );
+        showAlert(
+          'Reward expired',
+          `${customer.displayName}'s reward expired on ${new Date(
+            account.rewardExpiresAt
+          ).toLocaleDateString()} and has been reset.`
+        );
+        return;
+      }
 
       if (current < goal) {
         showAlert(
           'Not ready yet',
           `${customer.displayName} has ${current}/${goal} ${
-            program.type === 'punchcard' ? 'punches' : 'points'
+            isPunchcard ? 'punches' : 'points'
           }.`
         );
         return;
@@ -143,8 +180,10 @@ export default function MerchantDashboardScreen({ navigation }: any) {
       await setDoc(
         doc(db, 'rewardAccounts', accountId),
         {
-          [program.type === 'punchcard' ? 'punches' : 'points']: increment(-goal),
-          updatedAt: serverTimestamp(),
+          [isPunchcard ? 'punches' : 'points']: current - goal,
+          rewardEarnedAt: null,
+          rewardExpiresAt: null,
+          updatedAt: now,
         },
         { merge: true }
       );
@@ -179,6 +218,9 @@ export default function MerchantDashboardScreen({ navigation }: any) {
             : `${program.pointsPerDollar} pt/$ · ${program.pointsForReward} pts → reward`}
         </Text>
         <Text style={styles.rewardDescription}>{program.rewardDescription}</Text>
+        <Text style={styles.expiryNote}>
+          Redeemable within {program.expiryDays} day{program.expiryDays === 1 ? '' : 's'} of earning
+        </Text>
       </View>
 
       <View style={styles.linkRow}>
@@ -229,31 +271,32 @@ export default function MerchantDashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: '#fff' },
+  container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  programCard: { backgroundColor: '#f6f6f6', borderRadius: 12, padding: 16, marginBottom: 12 },
+  programCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 12 },
   programType: { fontSize: 14, fontWeight: '600' },
-  rewardDescription: { fontSize: 13, color: '#666', marginTop: 4 },
+  rewardDescription: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
+  expiryNote: { fontSize: 11, color: COLORS.textFaint, marginTop: 6 },
   linkRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   linkButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
   },
-  linkButtonText: { fontSize: 13, fontWeight: '600', color: '#333' },
-  label: { fontSize: 13, fontWeight: '600', color: '#666', marginTop: 8, marginBottom: 6 },
+  linkButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 8, marginBottom: 6 },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
     borderRadius: 10,
     padding: 12,
     fontSize: 15,
   },
   button: {
-    backgroundColor: '#111',
+    backgroundColor: COLORS.primary,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
@@ -262,12 +305,12 @@ const styles = StyleSheet.create({
   buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   redeemButton: {
     borderWidth: 1,
-    borderColor: '#c0862a',
+    borderColor: COLORS.accent,
     borderRadius: 10,
     padding: 14,
     alignItems: 'center',
     marginTop: 12,
   },
-  redeemButtonText: { color: '#c0862a', fontWeight: '600', fontSize: 15 },
-  emptyText: { color: '#999', textAlign: 'center', marginTop: 24 },
+  redeemButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 15 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
 });

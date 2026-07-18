@@ -7,20 +7,25 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
+import { COLORS, RADIUS } from '../theme';
 
 export default function SignUpScreen({ navigation }: any) {
   const { signUp } = useAuth();
-  const [displayName, setDisplayName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!displayName || !email || !password) {
-      showAlert('Missing info', 'Fill in your name, email, and password.');
+    if (!firstName || !lastName || !username || !email || !password) {
+      showAlert('Missing info', 'Fill in your name, username, email, and password.');
       return;
     }
     if (password.length < 6) {
@@ -29,7 +34,7 @@ export default function SignUpScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      await signUp(email.trim(), password, displayName.trim());
+      await signUp(email.trim(), password, firstName.trim(), lastName.trim(), username.trim());
     } catch (err: any) {
       showAlert('Sign up failed', err.message);
     } finally {
@@ -42,59 +47,116 @@ export default function SignUpScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>Create account</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.logoBubble}>
+          <Ionicons name="cafe" size={28} color={COLORS.white} />
+        </View>
+        <Text style={styles.title}>Create account</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Display name"
-        value={displayName}
-        onChangeText={setDisplayName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <View style={styles.row}>
+          <View style={[styles.inputWrap, { flex: 1 }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="First name"
+              placeholderTextColor={COLORS.textFaint}
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+          </View>
+          <View style={[styles.inputWrap, { flex: 1 }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Last name"
+              placeholderTextColor={COLORS.textFaint}
+              value={lastName}
+              onChangeText={setLastName}
+            />
+          </View>
+        </View>
 
-      <Pressable style={styles.button} onPress={handleSignUp} disabled={loading}>
-        <Text style={styles.buttonText}>{loading ? 'Creating…' : 'Sign up'}</Text>
-      </Pressable>
+        <View style={styles.inputWrap}>
+          <Ionicons name="at-outline" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            placeholderTextColor={COLORS.textFaint}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={username}
+            onChangeText={setUsername}
+          />
+        </View>
 
-      <Pressable onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.link}>Already have an account? Log in</Text>
-      </Pressable>
+        <View style={styles.inputWrap}>
+          <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={COLORS.textFaint}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+          />
+        </View>
+        <View style={styles.inputWrap}>
+          <Ionicons name="lock-closed-outline" size={18} color={COLORS.textMuted} />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={COLORS.textFaint}
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+        </View>
+
+        <Pressable style={styles.button} onPress={handleSignUp} disabled={loading}>
+          <Text style={styles.buttonText}>{loading ? 'Creating…' : 'Sign up'}</Text>
+        </Pressable>
+
+        <Pressable onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.link}>Already have an account? Log in</Text>
+        </Pressable>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', marginBottom: 32 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
+  logoBubble: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
     marginBottom: 12,
-    fontSize: 16,
   },
+  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', color: COLORS.text, marginBottom: 28 },
+  row: { flexDirection: 'row', gap: 12 },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+  },
+  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: COLORS.text },
   button: {
-    backgroundColor: '#111',
-    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
     padding: 14,
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  link: { color: '#555', textAlign: 'center', marginTop: 16 },
+  buttonText: { color: COLORS.white, fontWeight: '600', fontSize: 16 },
+  link: { color: COLORS.textMuted, textAlign: 'center', marginTop: 16 },
 });

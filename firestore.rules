@@ -2,9 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'skim460725@gmail.com';
+    }
+
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && (request.auth.uid == uid || isAdmin());
 
       match /friends/{friendId} {
         allow read: if request.auth != null && request.auth.uid == uid;
@@ -25,7 +29,10 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid;
-      allow update, delete: if request.auth != null &&
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.uid ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['locked']));
+      allow delete: if request.auth != null &&
         request.auth.uid == resource.data.uid;
     }
 
@@ -34,13 +41,15 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         request.resource.data.ownerUid == request.auth.uid;
       allow update: if request.auth != null &&
-        resource.data.ownerUid == request.auth.uid;
+        (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
     }
 
     match /rewardAccounts/{accountId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null &&
+      allow create, update: if request.auth != null &&
         get(/databases/$(database)/documents/cafePrograms/$(request.resource.data.cafeId)).data.ownerUid == request.auth.uid;
+      allow delete: if isAdmin();
     }
 
     match /cafeAnnouncements/{announcementId} {
@@ -48,7 +57,8 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         get(/databases/$(database)/documents/cafePrograms/$(request.resource.data.cafeId)).data.ownerUid == request.auth.uid;
       allow delete: if request.auth != null &&
-        get(/databases/$(database)/documents/cafePrograms/$(resource.data.cafeId)).data.ownerUid == request.auth.uid;
+        (get(/databases/$(database)/documents/cafePrograms/$(resource.data.cafeId)).data.ownerUid == request.auth.uid ||
+         isAdmin());
     }
 
     match /menuItems/{itemId} {
@@ -56,7 +66,8 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         get(/databases/$(database)/documents/cafePrograms/$(request.resource.data.cafeId)).data.ownerUid == request.auth.uid;
       allow delete: if request.auth != null &&
-        get(/databases/$(database)/documents/cafePrograms/$(resource.data.cafeId)).data.ownerUid == request.auth.uid;
+        (get(/databases/$(database)/documents/cafePrograms/$(resource.data.cafeId)).data.ownerUid == request.auth.uid ||
+         isAdmin());
     }
 
     match /cafeReviews/{reviewId} {
@@ -65,6 +76,19 @@ service cloud.firestore {
         request.resource.data.uid == request.auth.uid;
       allow delete: if request.auth != null &&
         resource.data.uid == request.auth.uid;
+    }
+
+    match /studyNotes/{uid} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /nudges/{nudgeId} {
+      allow read: if request.auth != null &&
+        (resource.data.toUid == request.auth.uid || resource.data.fromUid == request.auth.uid);
+      allow create: if request.auth != null &&
+        request.resource.data.fromUid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.toUid == request.auth.uid;
     }
   }
 }
