@@ -7,9 +7,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
+import { showAlert } from '../utils/alert';
 
 export default function SignUpScreen({ navigation }: any) {
   const { signUp } = useAuth();
@@ -20,18 +20,18 @@ export default function SignUpScreen({ navigation }: any) {
 
   const handleSignUp = async () => {
     if (!displayName || !email || !password) {
-      Alert.alert('Missing info', 'Fill in your name, email, and password.');
+      showAlert('Missing info', 'Fill in your name, email, and password.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Weak password', 'Password must be at least 6 characters.');
+      showAlert('Weak password', 'Password must be at least 6 characters.');
       return;
     }
     setLoading(true);
     try {
       await signUp(email.trim(), password, displayName.trim());
     } catch (err: any) {
-      Alert.alert('Sign up failed', err.message);
+      showAlert('Sign up failed', err.message);
     } finally {
       setLoading(false);
     }

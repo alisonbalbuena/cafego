@@ -33,11 +33,41 @@ export interface Cafe {
   region: string;
 }
 
+export type UserRole = 'customer' | 'merchant';
+
 export interface UserProfile {
   uid: string;
   displayName: string;
   email: string;
   createdAt: number;
+  role: UserRole;
+  loyaltyCode: string;
+  merchantCafeId?: string;
+}
+
+export type LoyaltyProgramType = 'points' | 'punchcard';
+
+export interface CafeProgram {
+  cafeId: string;
+  cafeName: string;
+  ownerUid: string;
+  type: LoyaltyProgramType;
+  rewardDescription: string;
+  pointsPerDollar?: number;
+  pointsForReward?: number;
+  punchesRequired?: number;
+  createdAt: number;
+}
+
+export interface RewardAccount {
+  id: string;
+  cafeId: string;
+  cafeName: string;
+  uid: string;
+  displayName: string;
+  points: number;
+  punches: number;
+  updatedAt: number;
 }
 
 export type FriendRequestStatus = 'pending' | 'accepted';

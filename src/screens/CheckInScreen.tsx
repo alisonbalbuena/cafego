@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import {
   addDoc,
@@ -21,6 +20,7 @@ import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
 import { Cafe, StudySession, Subject, SUBJECTS } from '../types';
+import { showAlert } from '../utils/alert';
 
 export default function CheckInScreen() {
   const { user, signOut } = useAuth();
@@ -74,7 +74,7 @@ export default function CheckInScreen() {
       setSelectedSubject(null);
       setSearch('');
     } catch (err: any) {
-      Alert.alert('Could not start session', err.message);
+      showAlert('Could not start session', err.message);
     } finally {
       setSubmitting(false);
     }
@@ -88,7 +88,7 @@ export default function CheckInScreen() {
         endedAt: Date.now(),
       });
     } catch (err: any) {
-      Alert.alert('Could not end session', err.message);
+      showAlert('Could not end session', err.message);
     } finally {
       setSubmitting(false);
     }

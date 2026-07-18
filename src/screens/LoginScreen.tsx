@@ -7,9 +7,9 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
+import { showAlert } from '../utils/alert';
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn } = useAuth();
@@ -19,14 +19,14 @@ export default function LoginScreen({ navigation }: any) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Missing info', 'Enter your email and password.');
+      showAlert('Missing info', 'Enter your email and password.');
       return;
     }
     setLoading(true);
     try {
       await signIn(email.trim(), password);
     } catch (err: any) {
-      Alert.alert('Login failed', err.message);
+      showAlert('Login failed', err.message);
     } finally {
       setLoading(false);
     }

@@ -8,9 +8,13 @@ import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import CheckInScreen from '../screens/CheckInScreen';
 import FriendsScreen from '../screens/FriendsScreen';
+import RewardsScreen from '../screens/RewardsScreen';
+import ClaimCafeScreen from '../screens/ClaimCafeScreen';
+import MerchantDashboardScreen from '../screens/MerchantDashboardScreen';
 
 const AuthStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
+const RewardsStack = createNativeStackNavigator();
 
 function AuthNavigator() {
   return (
@@ -21,11 +25,25 @@ function AuthNavigator() {
   );
 }
 
+function RewardsNavigator() {
+  return (
+    <RewardsStack.Navigator screenOptions={{ headerShown: false }}>
+      <RewardsStack.Screen name="RewardsHome" component={RewardsScreen} />
+      <RewardsStack.Screen name="ClaimCafe" component={ClaimCafeScreen} />
+    </RewardsStack.Navigator>
+  );
+}
+
 function MainNavigator() {
+  const { profile } = useAuth();
+  const isMerchant = profile?.role === 'merchant' && !!profile.merchantCafeId;
+
   return (
     <MainTabs.Navigator screenOptions={{ headerShown: false }}>
       <MainTabs.Screen name="Study" component={CheckInScreen} />
       <MainTabs.Screen name="Friends" component={FriendsScreen} />
+      <MainTabs.Screen name="Rewards" component={RewardsNavigator} />
+      {isMerchant && <MainTabs.Screen name="My Cafe" component={MerchantDashboardScreen} />}
     </MainTabs.Navigator>
   );
 }

@@ -6,7 +6,6 @@ import {
   Pressable,
   FlatList,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import {
   addDoc,
@@ -22,6 +21,7 @@ import {
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { FriendRequest, StudySession } from '../types';
+import { showAlert } from '../utils/alert';
 
 interface Friend {
   uid: string;
@@ -86,7 +86,7 @@ export default function FriendsScreen() {
     if (!user || !emailInput.trim()) return;
     const targetEmail = emailInput.trim().toLowerCase();
     if (targetEmail === user.email?.toLowerCase()) {
-      Alert.alert('That\'s you', 'Enter a friend\'s email, not your own.');
+      showAlert('That\'s you', 'Enter a friend\'s email, not your own.');
       return;
     }
     setSending(true);
@@ -95,7 +95,7 @@ export default function FriendsScreen() {
         query(collection(db, 'users'), where('email', '==', targetEmail))
       );
       if (usersSnap.empty) {
-        Alert.alert('No account found', `No user is registered with ${targetEmail}.`);
+        showAlert('No account found', `No user is registered with ${targetEmail}.`);
         return;
       }
       const target = usersSnap.docs[0].data() as any;
@@ -108,9 +108,9 @@ export default function FriendsScreen() {
         createdAt: Date.now(),
       });
       setEmailInput('');
-      Alert.alert('Request sent', `Friend request sent to ${target.displayName}.`);
+      showAlert('Request sent', `Friend request sent to ${target.displayName}.`);
     } catch (err: any) {
-      Alert.alert('Could not send request', err.message);
+      showAlert('Could not send request', err.message);
     } finally {
       setSending(false);
     }
@@ -131,7 +131,7 @@ export default function FriendsScreen() {
       });
       await updateDoc(doc(db, 'friendRequests', request.id), { status: 'accepted' });
     } catch (err: any) {
-      Alert.alert('Could not accept request', err.message);
+      showAlert('Could not accept request', err.message);
     }
   };
 
