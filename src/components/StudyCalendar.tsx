@@ -3,8 +3,8 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, RADIUS } from '../theme';
 import { dateKey, parseDateKey } from '../utils/dateHelpers';
-import { formatMoney } from '../utils/format';
-import { StudySession } from '../types';
+import { formatDuration, formatMoney, formatTime } from '../utils/format';
+import { getSessionSubjectSegments, StudySession } from '../types';
 
 interface Props {
   sessions: StudySession[];
@@ -68,6 +68,20 @@ export default function StudyCalendar({ sessions }: Props) {
 
   const todayKey = dateKey(today.getTime());
   const selectedSessions = selectedKey ? sessionsByDay[selectedKey] ?? [] : [];
+
+  const subjectSegments = useMemo(() => {
+    const segments: { subject: string; startedAt: number; endedAt: number }[] = [];
+    selectedSessions.forEach((s) => {
+      if (s.endedAt == null) return;
+      getSessionSubjectSegments(s).forEach((seg) => {
+        const end = seg.endedAt ?? s.endedAt!;
+        if (end > seg.startedAt) {
+          segments.push({ subject: seg.subject, startedAt: seg.startedAt, endedAt: end });
+        }
+      });
+    });
+    return segments.sort((a, b) => a.startedAt - b.startedAt);
+  }, [selectedSessions]);
 
   return (
     <View>
@@ -137,6 +151,21 @@ export default function StudyCalendar({ sessions }: Props) {
               </Text>
             </View>
           ))}
+
+          {subjectSegments.length > 0 && (
+            <View style={styles.subjectSection}>
+              <Text style={styles.subjectTitle}>📚 Time by subject</Text>
+              {subjectSegments.map((seg, i) => (
+                <View key={i} style={styles.subjectRow}>
+                  <Text style={styles.subjectName}>{seg.subject}</Text>
+                  <Text style={styles.subjectMeta}>
+                    {formatTime(seg.startedAt)} – {formatTime(seg.endedAt)} ·{' '}
+                    {formatDuration(seg.endedAt - seg.startedAt)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -192,4 +221,14 @@ const styles = StyleSheet.create({
   detailRow: { paddingVertical: 4 },
   detailCafe: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   detailMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
+  subjectSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  subjectTitle: { fontSize: 12, fontWeight: '700', color: COLORS.text, marginBottom: 6 },
+  subjectRow: { paddingVertical: 4 },
+  subjectName: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  subjectMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
 });

@@ -9,3 +9,7 @@ export function formatDuration(ms: number): string {
 export function formatMoney(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
+
+export function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}

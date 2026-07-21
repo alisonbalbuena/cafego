@@ -23,7 +23,19 @@ import ManageMenuScreen from '../screens/ManageMenuScreen';
 import AdminScreen from '../screens/AdminScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
-import { ADMIN_EMAIL } from '../constants';
+import PetScreen from '../screens/PetScreen';
+import SwipeableTabScreen from '../components/SwipeableTabScreen';
+import { ADMIN_EMAIL, SHOW_ADMIN_TAB, SHOW_LOYALTY_PROGRAM } from '../constants';
+
+function withSwipe(Component: React.ComponentType<any>) {
+  return function SwipeWrapped(props: any) {
+    return (
+      <SwipeableTabScreen>
+        <Component {...props} />
+      </SwipeableTabScreen>
+    );
+  };
+}
 
 const AuthStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
@@ -44,7 +56,7 @@ function AuthNavigator() {
 function HomeNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
+      <HomeStack.Screen name="HomeMain" component={withSwipe(HomeScreen)} />
       <HomeStack.Screen name="CafeProfile" component={CafeProfileScreen} />
       <HomeStack.Screen name="Map" component={MapScreen} />
     </HomeStack.Navigator>
@@ -54,7 +66,7 @@ function HomeNavigator() {
 function RewardsNavigator() {
   return (
     <RewardsStack.Navigator screenOptions={{ headerShown: false }}>
-      <RewardsStack.Screen name="RewardsHome" component={RewardsScreen} />
+      <RewardsStack.Screen name="RewardsHome" component={withSwipe(RewardsScreen)} />
       <RewardsStack.Screen name="ClaimCafe" component={ClaimCafeScreen} />
     </RewardsStack.Navigator>
   );
@@ -63,7 +75,7 @@ function RewardsNavigator() {
 function MyCafeNavigator() {
   return (
     <MyCafeStack.Navigator screenOptions={{ headerShown: false }}>
-      <MyCafeStack.Screen name="MyCafeHome" component={MerchantDashboardScreen} />
+      <MyCafeStack.Screen name="MyCafeHome" component={withSwipe(MerchantDashboardScreen)} />
       <MyCafeStack.Screen name="ManageAnnouncements" component={ManageAnnouncementsScreen} />
       <MyCafeStack.Screen name="ManageMenu" component={ManageMenuScreen} />
     </MyCafeStack.Navigator>
@@ -73,7 +85,7 @@ function MyCafeNavigator() {
 function ProfileNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
+      <ProfileStack.Screen name="ProfileHome" component={withSwipe(ProfileScreen)} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
     </ProfileStack.Navigator>
   );
@@ -85,6 +97,7 @@ const TAB_ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Io
   Friends: ['people', 'people-outline'],
   Rewards: ['gift', 'gift-outline'],
   'My Cafe': ['cafe', 'cafe-outline'],
+  Buddy: ['game-controller', 'game-controller-outline'],
   Admin: ['shield-checkmark', 'shield-checkmark-outline'],
   Profile: ['person-circle', 'person-circle-outline'],
 };
@@ -120,11 +133,16 @@ function MainNavigator() {
       })}
     >
       <MainTabs.Screen name="Home" component={HomeNavigator} />
-      <MainTabs.Screen name="Study" component={CheckInScreen} />
-      <MainTabs.Screen name="Friends" component={FriendsScreen} />
-      <MainTabs.Screen name="Rewards" component={RewardsNavigator} />
-      {isMerchant && <MainTabs.Screen name="My Cafe" component={MyCafeNavigator} />}
-      {isAdmin && <MainTabs.Screen name="Admin" component={AdminScreen} />}
+      <MainTabs.Screen name="Study" component={withSwipe(CheckInScreen)} />
+      <MainTabs.Screen name="Friends" component={withSwipe(FriendsScreen)} />
+      {SHOW_LOYALTY_PROGRAM && <MainTabs.Screen name="Rewards" component={RewardsNavigator} />}
+      {SHOW_LOYALTY_PROGRAM && isMerchant && (
+        <MainTabs.Screen name="My Cafe" component={MyCafeNavigator} />
+      )}
+      <MainTabs.Screen name="Buddy" component={withSwipe(PetScreen)} />
+      {SHOW_ADMIN_TAB && isAdmin && (
+        <MainTabs.Screen name="Admin" component={withSwipe(AdminScreen)} />
+      )}
       <MainTabs.Screen name="Profile" component={ProfileNavigator} />
     </MainTabs.Navigator>
   );
