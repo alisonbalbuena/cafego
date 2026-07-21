@@ -5,6 +5,7 @@ import {
   Pressable,
   Image,
   FlatList,
+  RefreshControl,
   StyleSheet,
 } from 'react-native';
 import {
@@ -20,12 +21,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
-import { FriendRequest, intensityMeta, isSessionPublic, StudySession } from '../types';
+import { FriendRequest, intensityMeta, isSessionPublic, StudySession, UserProfile } from '../types';
 import { showAlert } from '../utils/alert';
 import { formatDuration } from '../utils/format';
 import { COLORS, RADIUS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import StudyNotesStrip from '../components/StudyNotesStrip';
+import { useRefresh } from '../hooks/useRefresh';
 
 interface Friend {
   uid: string;
@@ -51,6 +53,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 
 export default function FriendsScreen() {
   const { user, profile } = useAuth();
+  const { refreshing, onRefresh } = useRefresh();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [activeByUid, setActiveByUid] = useState<Record<string, StudySession>>({});
@@ -58,6 +61,7 @@ export default function FriendsScreen() {
   const [usernameSearch, setUsernameSearch] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [friendProfiles, setFriendProfiles] = useState<Record<string, UserProfile>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -117,6 +121,23 @@ export default function FriendsScreen() {
     });
     return unsubscribe;
   }, [user, friends]);
+
+  useEffect(() => {
+    if (friends.length === 0) {
+      setFriendProfiles({});
+      return;
+    }
+    const uids = friends.slice(0, 30).map((f) => f.uid);
+    (async () => {
+      const q = query(collection(db, 'users'), where('uid', 'in', uids));
+      const snapshot = await getDocs(q);
+      const next: Record<string, UserProfile> = {};
+      snapshot.docs.forEach((d) => {
+        next[d.id] = d.data() as UserProfile;
+      });
+      setFriendProfiles(next);
+    })();
+  }, [friends]);
 
   const leaderboardEntries = useMemo<LeaderboardEntry[]>(() => {
     if (!user) return [];
@@ -288,6 +309,9 @@ export default function FriendsScreen() {
       <FlatList
         data={friends}
         keyExtractor={(item) => item.uid}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+        }
         ListHeaderComponent={
           <View>
             <Text style={styles.heading}>Friends</Text>
@@ -361,6 +385,9 @@ export default function FriendsScreen() {
         renderItem={({ item }) => {
           const session = activeByUid[item.uid];
           const together = togetherCounts[item.uid] ?? 0;
+          const friendProfile = friendProfiles[item.uid];
+          const showStreak =
+            friendProfile?.streakVisibility === 'friends' && (friendProfile?.weeklyStreak ?? 0) > 0;
           return (
             <View style={styles.friendRow}>
               <View style={{ flex: 1 }}>
@@ -383,6 +410,9 @@ export default function FriendsScreen() {
                   <Text style={styles.togetherText}>
                     📚 Studied together {together}×
                   </Text>
+                )}
+                {showStreak && (
+                  <Text style={styles.togetherText}>🔥 {friendProfile!.weeklyStreak} week streak</Text>
                 )}
               </View>
               <View style={styles.friendActions}>

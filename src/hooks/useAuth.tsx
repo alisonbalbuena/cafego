@@ -113,6 +113,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         return;
       }
+      if (data.petCoins === undefined) {
+        // Backfill accounts created before the study-buddy pet game existed.
+        await setDoc(
+          doc(db, 'users', user.uid),
+          { petName: 'Buddy', petCoins: 0, petGrowth: 0, petOutfit: [], allNighterCount: 0 },
+          { merge: true }
+        );
+        return;
+      }
+      if (data.allNighterCount === undefined) {
+        // Backfill accounts created before the all-nighter tracker existed.
+        await setDoc(doc(db, 'users', user.uid), { allNighterCount: 0 }, { merge: true });
+        return;
+      }
       setProfile(data as UserProfile);
     });
     return unsubscribe;
@@ -156,6 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       createdAt: serverTimestamp(),
       role: 'customer',
       loyaltyCode,
+      petName: 'Buddy',
+      petCoins: 0,
+      petGrowth: 0,
+      petOutfit: [],
+      allNighterCount: 0,
     });
   };
 
