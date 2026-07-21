@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -10,21 +10,44 @@ import { COLORS, RADIUS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import StudyCalendarSection from '../components/StudyCalendarSection';
 import NudgeBanner from '../components/NudgeBanner';
+import MapPreview from '../components/MapPreview';
+import CommunityFeedSection from '../components/CommunityFeedSection';
+import { useRefresh } from '../hooks/useRefresh';
 
 interface Friend {
   uid: string;
   displayName: string;
 }
 
-function greeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+const MOTIVATIONAL_QUOTES = [
+  'Time to grind ☕',
+  'Work hard, play hard 💪',
+  "Let's lock in 🔒",
+  'Stay hungry, stay focused 🔥',
+  'One session closer to greatness ✨',
+  'No days off 📚',
+  'Future you says thanks 🙏',
+  'Get after it 🚀',
+  'Small steps, big wins 👣',
+  'Discipline over motivation 💯',
+  'Progress, not perfection 📈',
+  'You vs. you 🏆',
+  'Turn coffee into knowledge ☕',
+  "Let's make today count ⏳",
+  'Chase the grind 🎯',
+  'Consistency beats intensity 🌱',
+  'Show up for yourself today 💫',
+  'Big goals start with small sessions 🌟',
+];
+
+function randomQuote() {
+  return MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
 }
 
 export default function HomeScreen({ navigation }: any) {
   const { user, profile } = useAuth();
+  const { refreshing, onRefresh } = useRefresh();
+  const [quote] = useState(randomQuote);
   const [search, setSearch] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriends, setActiveFriends] = useState<StudySession[]>([]);
@@ -148,8 +171,14 @@ export default function HomeScreen({ navigation }: any) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
-      <Text style={styles.greeting}>{greeting()} ☕</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 24 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+      }
+    >
+      <Text style={styles.greeting}>{quote}</Text>
       <Text style={styles.heading}>
         {profile?.firstName ?? profile?.displayName ?? 'Welcome back'}
       </Text>
@@ -162,6 +191,8 @@ export default function HomeScreen({ navigation }: any) {
         value={search}
         onChangeText={setSearch}
       />
+
+      <MapPreview onPress={() => navigation.navigate('Map')} />
 
       <Pressable style={styles.mapButton} onPress={() => navigation.navigate('Map')}>
         <View style={styles.mapButtonIcon}>
@@ -197,6 +228,8 @@ export default function HomeScreen({ navigation }: any) {
           ))
         )}
       </View>
+
+      <CommunityFeedSection />
 
       <View style={styles.sectionHeaderRow}>
         <Ionicons name="time" size={16} color={COLORS.textMuted} />
@@ -260,8 +293,8 @@ export default function HomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  greeting: { fontSize: 14, fontWeight: '600', color: COLORS.textMuted },
-  heading: { fontSize: 26, fontWeight: '700', color: COLORS.text, marginBottom: 16 },
+  greeting: { fontSize: 19, fontWeight: '700', color: COLORS.accent, marginBottom: 2 },
+  heading: { fontSize: 34, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',

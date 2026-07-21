@@ -6,7 +6,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
-import { intensityMeta, isSessionPublic, StudySession } from '../types';
+import { busynessMeta, intensityMeta, isSessionPublic, StudySession } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
 import { distanceMiles } from '../utils/geo';
@@ -16,12 +16,22 @@ interface Friend {
   displayName: string;
 }
 
+type MapScope = 'friend' | 'community' | 'everyone';
+
+const SCOPE_META: Record<MapScope, { color: string; label: string }> = {
+  friend: { color: '#2a7a2a', label: '👥 Friend' },
+  community: { color: '#7a4a9a', label: '🏫 Community' },
+  everyone: { color: '#2a6a9a', label: '🌍 Public' },
+};
+
 export default function MapScreen({ navigation }: any) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [activeFriends, setActiveFriends] = useState<StudySession[]>([]);
+  const [communitySessions, setCommunitySessions] = useState<StudySession[]>([]);
+  const [everyoneSessions, setEveryoneSessions] = useState<StudySession[]>([]);
   const [visitedCafeIds, setVisitedCafeIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -68,6 +78,35 @@ export default function MapScreen({ navigation }: any) {
   }, [friends]);
 
   useEffect(() => {
+    if (!profile?.community) {
+      setCommunitySessions([]);
+      return;
+    }
+    const q = query(
+      collection(db, 'studySessions'),
+      where('visibility', '==', 'community'),
+      where('community', '==', profile.community),
+      where('endedAt', '==', null)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCommunitySessions(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as StudySession));
+    });
+    return unsubscribe;
+  }, [profile?.community]);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'studySessions'),
+      where('visibility', '==', 'everyone'),
+      where('endedAt', '==', null)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setEveryoneSessions(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as StudySession));
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'studySessions'), where('uid', '==', user.uid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -75,6 +114,34 @@ export default function MapScreen({ navigation }: any) {
     });
     return unsubscribe;
   }, [user]);
+
+  const visibleSessions = useMemo(() => {
+    const scopeById = new Map<string, MapScope>();
+    activeFriends.forEach((s) => scopeById.set(s.id, 'friend'));
+    communitySessions.forEach((s) => {
+      if (!scopeById.has(s.id)) scopeById.set(s.id, 'community');
+    });
+    everyoneSessions.forEach((s) => {
+      if (!scopeById.has(s.id)) scopeById.set(s.id, 'everyone');
+    });
+    const byId = new Map<string, StudySession>();
+    [...activeFriends, ...communitySessions, ...everyoneSessions].forEach((s) => {
+      if (s.uid !== user?.uid) byId.set(s.id, s);
+    });
+    return Array.from(byId.values()).map((s) => ({ session: s, scope: scopeById.get(s.id)! }));
+  }, [activeFriends, communitySessions, everyoneSessions, user]);
+
+  const busynessByCafe = useMemo(() => {
+    const map = new Map<string, { session: StudySession; scope: MapScope }>();
+    visibleSessions.forEach(({ session, scope }) => {
+      if (!session.busynessReport) return;
+      const existing = map.get(session.cafeId);
+      if (!existing || session.startedAt > existing.session.startedAt) {
+        map.set(session.cafeId, { session, scope });
+      }
+    });
+    return map;
+  }, [visibleSessions]);
 
   const nearestCafes = useMemo(() => {
     if (!location) return CAFES;
@@ -111,6 +178,8 @@ export default function MapScreen({ navigation }: any) {
       <MapView style={styles.map} initialRegion={initialRegion} showsUserLocation>
         {nearestCafes.map((cafe) => {
           const visited = visitedCafeIds.has(cafe.id);
+          const busy = busynessByCafe.get(cafe.id);
+          const busyMeta = busy ? busynessMeta(busy.session.busynessReport) : undefined;
           return (
             <Marker
               key={cafe.id}
@@ -130,6 +199,11 @@ export default function MapScreen({ navigation }: any) {
                     {cafe.neighborhood}
                     {'distance' in cafe ? ` · ${(cafe as any).distance.toFixed(1)} mi` : ''}
                   </Text>
+                  {busyMeta && (
+                    <Text style={styles.calloutBusyness}>
+                      {busyMeta.emoji} {busyMeta.label} · {SCOPE_META[busy!.scope].label}
+                    </Text>
+                  )}
                   <Text style={styles.calloutLink}>Tap for details</Text>
                 </View>
               </Callout>
@@ -137,14 +211,15 @@ export default function MapScreen({ navigation }: any) {
           );
         })}
 
-        {activeFriends.map((session) => {
+        {visibleSessions.map(({ session, scope }) => {
           const cafe = CAFES.find((c) => c.id === session.cafeId);
           if (!cafe) return null;
+          const busyMeta = busynessMeta(session.busynessReport);
           return (
             <Marker
               key={session.id}
               coordinate={{ latitude: cafe.lat, longitude: cafe.lng }}
-              pinColor="#2a7a2a"
+              pinColor={SCOPE_META[scope].color}
             >
               <Callout>
                 <View style={{ maxWidth: 200 }}>
@@ -155,6 +230,12 @@ export default function MapScreen({ navigation }: any) {
                   <Text style={styles.calloutIntensity}>
                     {intensityMeta(session.intensity).emoji} {intensityMeta(session.intensity).label}
                   </Text>
+                  {busyMeta && (
+                    <Text style={styles.calloutBusyness}>
+                      {busyMeta.emoji} {busyMeta.label}
+                    </Text>
+                  )}
+                  <Text style={styles.calloutScope}>{SCOPE_META[scope].label}</Text>
                 </View>
               </Callout>
             </Marker>
@@ -172,5 +253,7 @@ const styles = StyleSheet.create({
   calloutTitle: { fontWeight: '700', fontSize: 14 },
   calloutSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   calloutIntensity: { fontSize: 11, fontWeight: '600', color: COLORS.primary, marginTop: 4 },
+  calloutBusyness: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4 },
+  calloutScope: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
   calloutLink: { fontSize: 11, color: COLORS.link, marginTop: 4 },
 });

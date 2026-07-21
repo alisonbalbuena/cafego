@@ -25,6 +25,7 @@ export default function EditProfileScreen({ navigation }: any) {
   const [lastName, setLastName] = useState(profile?.lastName ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
+  const [community, setCommunity] = useState(profile?.community ?? '');
   const [photoUrl, setPhotoUrl] = useState(profile?.photoUrl);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -88,6 +89,7 @@ export default function EditProfileScreen({ navigation }: any) {
         displayName,
         username: cleanUsername,
         bio: bio.trim(),
+        community: community.trim().slice(0, 60),
       });
       if (auth.currentUser) {
         await updateAuthProfile(auth.currentUser, { displayName });
@@ -140,6 +142,14 @@ export default function EditProfileScreen({ navigation }: any) {
           onChangeText={setBio}
           multiline
           placeholder="Tell people a bit about yourself"
+        />
+
+        <Text style={styles.label}>Community</Text>
+        <TextInput
+          style={styles.input}
+          value={community}
+          onChangeText={setCommunity}
+          placeholder="e.g. UGA, Emory Med School, Georgia State Law"
         />
 
         <Pressable style={styles.button} onPress={save} disabled={saving}>

@@ -1,5 +1,19 @@
 import { Cafe } from '../types';
 
+// A virtual "cafe" for studying at home instead of going out. Kept out of the
+// CAFES list so it never shows up in search/nearest-cafe results.
+export const HOME_LOCATION: Cafe = {
+  id: 'home',
+  name: 'Bedroom/Dorm',
+  address: '',
+  lat: 0,
+  lng: 0,
+  rating: 0,
+  reviewCount: 0,
+  neighborhood: '',
+  region: '',
+};
+
 export const CAFES: Cafe[] = [
   {
     "id": "cafe_1",

@@ -49,6 +49,19 @@ export interface UserProfile {
   merchantCafeId?: string;
   pendingCafeId?: string;
   photoUrl?: string;
+  petName?: string;
+  petCoins?: number;
+  petGrowth?: number;
+  petOutfit?: string[];
+  allNighterCount?: number;
+  community?: string;
+  weeklyStreak?: number;
+  lastStudyWeekKey?: string;
+  streakVisibility?: 'private' | 'friends';
+  escapeOverrideCount?: number;
+  escapeOverrideMonthKey?: string;
+  petBackground?: string;
+  petBackgroundsOwned?: string[];
 }
 
 export type LoyaltyProgramType = 'points' | 'punchcard';
@@ -111,6 +124,7 @@ export interface CafeReview {
   environmentRating: number;
   comment: string;
   createdAt: number;
+  photoUrls?: string[];
 }
 
 export type FriendRequestStatus = 'pending' | 'accepted';
@@ -127,7 +141,20 @@ export interface FriendRequest {
   createdAt: number;
 }
 
-export type SessionVisibility = 'public' | 'private';
+// 'public' is a legacy wire value kept for backward compatibility with existing
+// session docs — it means "visible to friends" (same as the new 'friends' label).
+export type SessionVisibility = 'private' | 'public' | 'community' | 'everyone';
+
+export const VISIBILITY_LEVELS: { value: SessionVisibility; label: string; emoji: string }[] = [
+  { value: 'private', label: 'Just me', emoji: '🔒' },
+  { value: 'public', label: 'Friends', emoji: '👥' },
+  { value: 'community', label: 'My community', emoji: '🏫' },
+  { value: 'everyone', label: 'Everyone', emoji: '🌍' },
+];
+
+export function visibilityMeta(visibility?: SessionVisibility) {
+  return VISIBILITY_LEVELS.find((v) => v.value === visibility) ?? VISIBILITY_LEVELS[1];
+}
 
 export type StudyIntensity = 'chilling' | 'working' | 'locked_in';
 
@@ -148,6 +175,18 @@ export interface StudyBuddy {
   displayName: string;
 }
 
+export type BusynessLevel = 'open' | 'moderate' | 'busy';
+
+export const BUSYNESS_LEVELS: { value: BusynessLevel; label: string; emoji: string }[] = [
+  { value: 'open', label: 'Very open', emoji: '🟢' },
+  { value: 'moderate', label: 'Moderately busy', emoji: '🟡' },
+  { value: 'busy', label: 'Extremely busy', emoji: '🔴' },
+];
+
+export function busynessMeta(level?: BusynessLevel) {
+  return BUSYNESS_LEVELS.find((b) => b.value === level);
+}
+
 export type DistractionMode = 'allowed' | 'blocked';
 
 export interface ChecklistItem {
@@ -155,6 +194,12 @@ export interface ChecklistItem {
   text: string;
   done: boolean;
   photoUrl?: string;
+}
+
+export interface SubjectSegment {
+  subject: Subject;
+  startedAt: number;
+  endedAt: number | null;
 }
 
 export interface StudySession {
@@ -175,10 +220,29 @@ export interface StudySession {
   checklist?: ChecklistItem[];
   myCode?: string;
   locked?: boolean;
+  subjectLog?: SubjectSegment[];
+  archived?: boolean;
+  busynessReport?: BusynessLevel;
+  paused?: boolean;
+  pausedAt?: number | null;
+  pausedMs?: number;
+  allNighter?: boolean;
+  community?: string;
 }
 
 export function isSessionPublic(session: StudySession): boolean {
   return session.visibility !== 'private';
+}
+
+export function isSessionVisibleToCommunity(session: StudySession): boolean {
+  return session.visibility === 'community' || session.visibility === 'everyone';
+}
+
+/** Per-subject time segments for a session, falling back to a single segment
+ * spanning the whole session for sessions created before subject-switching existed. */
+export function getSessionSubjectSegments(session: StudySession): SubjectSegment[] {
+  if (session.subjectLog && session.subjectLog.length > 0) return session.subjectLog;
+  return [{ subject: session.subject, startedAt: session.startedAt, endedAt: session.endedAt }];
 }
 
 export interface StudyNote {
