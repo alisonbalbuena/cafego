@@ -13,7 +13,9 @@ import {
   Platform,
 } from 'react-native';
 import { collection, doc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
-import { db } from '../firebase/config';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import * as ImagePicker from 'expo-image-picker';
+import { db, storage } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import StarRating from '../components/StarRating';
 import {
@@ -25,12 +27,13 @@ import {
 } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
+import { SHOW_LOYALTY_PROGRAM } from '../constants';
 
 const REVIEW_CATEGORIES: { key: keyof CafeReview; label: string }[] = [
   { key: 'ambienceRating', label: 'Ambience' },
   { key: 'drinksRating', label: 'Drinks' },
   { key: 'pricesRating', label: 'Prices' },
-  { key: 'environmentRating', label: 'Environment' },
+  { key: 'environmentRating', label: 'Studyability' },
 ];
 
 interface Friend {
@@ -52,6 +55,8 @@ export default function CafeProfileScreen({ route }: any) {
   const [prices, setPrices] = useState(0);
   const [environment, setEnvironment] = useState(0);
   const [comment, setComment] = useState('');
+  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -102,6 +107,7 @@ export default function CafeProfileScreen({ route }: any) {
           setPrices(mine.pricesRating);
           setEnvironment(mine.environmentRating);
           setComment(mine.comment ?? '');
+          setReviewPhotos(mine.photoUrls ?? []);
         }
       }
     });
@@ -143,6 +149,34 @@ export default function CafeProfileScreen({ route }: any) {
   const current = isPunchcard ? account?.punches ?? 0 : account?.points ?? 0;
   const goal = isPunchcard ? program?.punchesRequired ?? 0 : program?.pointsForReward ?? 0;
 
+  const pickReviewPhoto = async () => {
+    if (!user) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAlert('Permission needed', 'Allow photo library access to add photos to your review.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+    if (result.canceled || !result.assets?.[0]) return;
+    setUploadingPhoto(true);
+    try {
+      const response = await fetch(result.assets[0].uri);
+      const blob = await response.blob();
+      const fileRef = ref(storage, `reviewPhotos/${user.uid}/${cafeId}_${Date.now()}.jpg`);
+      await uploadBytes(fileRef, blob);
+      const url = await getDownloadURL(fileRef);
+      setReviewPhotos((prev) => [...prev, url]);
+    } catch (err: any) {
+      showAlert('Upload failed', err.message);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const removeReviewPhoto = (url: string) => {
+    setReviewPhotos((prev) => prev.filter((u) => u !== url));
+  };
+
   const submitReview = async () => {
     if (!user) return;
     if (!ambience || !drinks || !prices || !environment) {
@@ -160,6 +194,7 @@ export default function CafeProfileScreen({ route }: any) {
         pricesRating: prices,
         environmentRating: environment,
         comment: comment.trim(),
+        photoUrls: reviewPhotos,
         createdAt: Date.now(),
       });
       showAlert('Thanks!', 'Your review was saved.');
@@ -178,7 +213,7 @@ export default function CafeProfileScreen({ route }: any) {
       <ScrollView>
         <Text style={styles.heading}>{cafeName}</Text>
 
-        {program && program.status !== 'pending' && (
+        {SHOW_LOYALTY_PROGRAM && program && program.status !== 'pending' && (
           <View style={styles.progressCard}>
             <Text style={styles.progressLabel}>{program.rewardDescription}</Text>
             <Text style={styles.progressValue}>
@@ -257,6 +292,15 @@ export default function CafeProfileScreen({ route }: any) {
                   <StarRating value={friendAverage} size={14} />
                 </View>
                 {!!r.comment && <Text style={styles.commentText}>{r.comment}</Text>}
+                {!!r.photoUrls?.length && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewPhotoRow}>
+                    {r.photoUrls.map((url) => (
+                      <Pressable key={url} onPress={() => setViewerUrl(url)}>
+                        <Image source={{ uri: url }} style={styles.reviewPhotoThumb} />
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                )}
               </View>
             );
           })
@@ -297,7 +341,7 @@ export default function CafeProfileScreen({ route }: any) {
             <StarRating value={prices} onChange={setPrices} />
           </View>
           <View style={styles.formRow}>
-            <Text style={styles.formLabel}>Environment</Text>
+            <Text style={styles.formLabel}>Studyability</Text>
             <StarRating value={environment} onChange={setEnvironment} />
           </View>
           <TextInput
@@ -307,6 +351,28 @@ export default function CafeProfileScreen({ route }: any) {
             onChangeText={setComment}
             multiline
           />
+
+          <Text style={styles.photoLabel}>Photos of your drinks/food (optional)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.reviewPhotoRow}>
+            {reviewPhotos.map((url) => (
+              <View key={url} style={styles.reviewPhotoWrap}>
+                <Pressable onPress={() => setViewerUrl(url)}>
+                  <Image source={{ uri: url }} style={styles.reviewPhoto} />
+                </Pressable>
+                <Pressable style={styles.removePhotoButton} onPress={() => removeReviewPhoto(url)}>
+                  <Text style={styles.removePhotoText}>✕</Text>
+                </Pressable>
+              </View>
+            ))}
+            <Pressable
+              style={styles.addPhotoButton}
+              onPress={pickReviewPhoto}
+              disabled={uploadingPhoto}
+            >
+              <Text style={styles.addPhotoButtonText}>{uploadingPhoto ? '…' : '+ Add'}</Text>
+            </Pressable>
+          </ScrollView>
+
           <Pressable style={styles.button} onPress={submitReview} disabled={submitting}>
             <Text style={styles.buttonText}>
               {submitting ? 'Saving…' : hasExistingReview ? 'Update review' : 'Submit review'}
@@ -322,6 +388,19 @@ export default function CafeProfileScreen({ route }: any) {
                 <View key={r.id} style={styles.commentRow}>
                   <Text style={styles.commentAuthor}>{r.displayName}</Text>
                   <Text style={styles.commentText}>{r.comment}</Text>
+                  {!!r.photoUrls?.length && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.reviewPhotoRow}
+                    >
+                      {r.photoUrls.map((url) => (
+                        <Pressable key={url} onPress={() => setViewerUrl(url)}>
+                          <Image source={{ uri: url }} style={styles.reviewPhotoThumb} />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
               ))}
           </View>
@@ -399,6 +478,41 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginTop: 8,
   },
+  photoLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 8 },
+  reviewPhotoRow: { marginBottom: 4 },
+  reviewPhotoWrap: { marginRight: 8, position: 'relative' },
+  reviewPhoto: { width: 72, height: 72, borderRadius: 10, backgroundColor: COLORS.card },
+  reviewPhotoThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: COLORS.card,
+    marginRight: 8,
+    marginTop: 6,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -6,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: COLORS.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  removePhotoText: { color: '#fff', fontSize: 12, lineHeight: 12 },
+  addPhotoButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPhotoButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
