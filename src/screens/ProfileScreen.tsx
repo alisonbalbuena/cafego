@@ -6,6 +6,7 @@ import {
   Image,
   FlatList,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
 } from 'react-native';
@@ -14,8 +15,11 @@ import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
 import { formatDuration } from '../utils/format';
+import { getAllNighterTitle } from '../utils/allNighter';
 import { COLORS } from '../theme';
 import SpendingSection from '../components/SpendingSection';
+import SessionHistorySection from '../components/SessionHistorySection';
+import { useRefresh } from '../hooks/useRefresh';
 
 interface Friend {
   uid: string;
@@ -24,6 +28,7 @@ interface Friend {
 
 export default function ProfileScreen({ navigation }: any) {
   const { user, profile, signOut } = useAuth();
+  const { refreshing, onRefresh } = useRefresh();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [showFriends, setShowFriends] = useState(false);
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -61,7 +66,8 @@ export default function ProfileScreen({ navigation }: any) {
     });
     return Object.entries(map)
       .map(([cafeId, v]) => ({ cafeId, ...v }))
-      .sort((a, b) => b.ms - a.ms);
+      .sort((a, b) => b.ms - a.ms)
+      .slice(0, 5);
   }, [completedSessions]);
 
   const cafesVisitedCount = useMemo(
@@ -70,7 +76,12 @@ export default function ProfileScreen({ navigation }: any) {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+      }
+    >
       <View style={styles.header}>
         {profile?.photoUrl ? (
           <Image source={{ uri: profile.photoUrl }} style={styles.avatar} />
@@ -83,7 +94,17 @@ export default function ProfileScreen({ navigation }: any) {
         )}
         <Text style={styles.name}>{profile?.displayName ?? user?.displayName}</Text>
         {!!profile?.username && <Text style={styles.username}>@{profile.username}</Text>}
+        {!!profile?.community && <Text style={styles.community}>🏫 {profile.community}</Text>}
         {!!profile?.bio && <Text style={styles.bio}>{profile.bio}</Text>}
+        {!!getAllNighterTitle(profile?.allNighterCount ?? 0) && (
+          <View style={styles.allNighterBadge}>
+            <Text style={styles.allNighterBadgeText}>
+              {getAllNighterTitle(profile?.allNighterCount ?? 0)!.emoji}{' '}
+              {getAllNighterTitle(profile?.allNighterCount ?? 0)!.label} ·{' '}
+              {profile?.allNighterCount} all-nighter{profile?.allNighterCount === 1 ? '' : 's'}
+            </Text>
+          </View>
+        )}
         <Pressable onPress={() => setShowFriends(true)}>
           <Text style={styles.friendsCount}>{friends.length} friends</Text>
         </Pressable>
@@ -112,13 +133,20 @@ export default function ProfileScreen({ navigation }: any) {
       {perCafe.length === 0 ? (
         <Text style={styles.emptyText}>No completed study sessions yet.</Text>
       ) : (
-        perCafe.map((c) => (
+        perCafe.map((c, i) => (
           <View key={c.cafeId} style={styles.cafeRow}>
-            <Text style={styles.cafeName}>{c.cafeName}</Text>
+            <Text style={styles.cafeName}>
+              {i === 0 ? '⭐ Favorite cafe · ' : ''}
+              {c.cafeName}
+            </Text>
             <Text style={styles.cafeTime}>{formatDuration(c.ms)}</Text>
           </View>
         ))
       )}
+
+      <View style={styles.historySection}>
+        <SessionHistorySection sessions={sessions} />
+      </View>
 
       <Pressable style={styles.signOutButton} onPress={signOut}>
         <Text style={styles.signOutText}>Log out</Text>
@@ -158,7 +186,16 @@ const styles = StyleSheet.create({
   avatarPlaceholderText: { fontSize: 32, color: COLORS.textFaint, fontWeight: '700' },
   name: { fontSize: 20, fontWeight: '700', marginTop: 12 },
   username: { fontSize: 13, color: COLORS.textFaint, marginTop: 2 },
+  community: { fontSize: 12, color: COLORS.link, fontWeight: '600', marginTop: 4 },
   bio: { fontSize: 13, color: COLORS.text, marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
+  allNighterBadge: {
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    marginTop: 10,
+  },
+  allNighterBadgeText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   friendsCount: { fontSize: 14, color: COLORS.link, fontWeight: '600', marginTop: 8 },
   editButton: {
     borderWidth: 1,
@@ -190,6 +227,7 @@ const styles = StyleSheet.create({
   },
   cafeName: { fontSize: 14, fontWeight: '600' },
   cafeTime: { fontSize: 14, color: COLORS.textMuted },
+  historySection: { marginTop: 32, marginBottom: 24 },
   signOutButton: { alignItems: 'center', marginTop: 24, marginBottom: 12 },
   signOutText: { color: COLORS.danger, fontWeight: '600', fontSize: 15 },
   modalContainer: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },

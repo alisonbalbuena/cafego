@@ -8,3 +8,25 @@ export function showAlert(title: string, message?: string) {
   }
   Alert.alert(title, message);
 }
+
+export function showConfirm(
+  title: string,
+  message: string,
+  confirmLabel = 'Confirm'
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (Platform.OS === 'web') {
+      resolve(window.confirm(`${title}\n\n${message}`));
+      return;
+    }
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: confirmLabel, style: 'destructive', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) }
+    );
+  });
+}

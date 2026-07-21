@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   Pressable,
+  RefreshControl,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,7 @@ import {
 import {
   addDoc,
   collection,
+  increment,
   onSnapshot,
   query,
   updateDoc,
@@ -23,25 +25,35 @@ import * as Location from 'expo-location';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveLock } from '../hooks/useActiveLock';
-import { CAFES } from '../data/cafes';
+import { CAFES, HOME_LOCATION } from '../data/cafes';
 import {
+  BusynessLevel,
+  BUSYNESS_LEVELS,
+  busynessMeta,
   Cafe,
   ChecklistItem,
   DistractionMode,
+  getSessionSubjectSegments,
   intensityMeta,
   SessionVisibility,
   StudyBuddy,
   StudyIntensity,
   StudyMode,
+  StudySession,
   Subject,
   STUDY_INTENSITIES,
   SUBJECTS,
+  VISIBILITY_LEVELS,
+  visibilityMeta,
 } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
 import { distanceMiles } from '../utils/geo';
 import { generateCode } from '../utils/code';
 import { applyBuddyCode } from '../utils/buddyCode';
+import { isAllNighter } from '../utils/allNighter';
+import { computeStreakCoins } from '../utils/streakCoins';
+import { useRefresh } from '../hooks/useRefresh';
 import SearchBar from '../components/SearchBar';
 import CoffeeMugTimer from '../components/CoffeeMugTimer';
 
@@ -52,8 +64,9 @@ interface Friend {
 }
 
 export default function CheckInScreen() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { session: activeSession } = useActiveLock();
+  const { refreshing, onRefresh } = useRefresh();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [search, setSearch] = useState('');
@@ -72,6 +85,7 @@ export default function CheckInScreen() {
   const [buddyCodeInput, setBuddyCodeInput] = useState('');
   const [applyingCode, setApplyingCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cafeActiveSessions, setCafeActiveSessions] = useState<StudySession[]>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -90,6 +104,27 @@ export default function CheckInScreen() {
       setLocation(position);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!activeSession || activeSession.cafeId === HOME_LOCATION.id) {
+      setCafeActiveSessions([]);
+      return;
+    }
+    const q = query(
+      collection(db, 'studySessions'),
+      where('cafeId', '==', activeSession.cafeId),
+      where('endedAt', '==', null)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCafeActiveSessions(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    });
+    return unsubscribe;
+  }, [activeSession?.cafeId]);
+
+  const friendsAtCafe = useMemo(() => {
+    const friendUids = new Set(friends.map((f) => f.uid));
+    return cafeActiveSessions.filter((s) => s.uid !== user?.uid && friendUids.has(s.uid));
+  }, [cafeActiveSessions, friends, user]);
 
   const sortedCafes = useMemo(() => {
     if (!location) return CAFES.map((c) => ({ ...c, distance: undefined as number | undefined }));
@@ -144,19 +179,24 @@ export default function CheckInScreen() {
     if (studyMode === 'solo' && distractionMode === 'blocked' && checklistDraft.length === 0) return;
     setSubmitting(true);
     try {
+      const startedAt = Date.now();
       const payload: Record<string, any> = {
         uid: user.uid,
         displayName: user.displayName ?? 'Someone',
         cafeId: selectedCafe.id,
         cafeName: selectedCafe.name,
         subject: selectedSubject,
-        startedAt: Date.now(),
+        startedAt,
         endedAt: null,
         visibility,
         intensity,
         studyMode,
         distractionMode,
+        subjectLog: [{ subject: selectedSubject, startedAt, endedAt: null }],
       };
+      if (profile?.community) {
+        payload.community = profile.community;
+      }
       if (studyMode === 'group' && taggedFriends.length > 0) {
         payload.withFriends = taggedFriends;
       }
@@ -187,16 +227,101 @@ export default function CheckInScreen() {
     }
   };
 
-  const endSession = async () => {
-    if (!activeSession) return;
-    setSubmitting(true);
+  const changeSubject = async (newSubject: Subject) => {
+    if (!activeSession || newSubject === activeSession.subject) return;
+    const now = Date.now();
+    const log = getSessionSubjectSegments(activeSession);
+    const closedLog = log.map((seg, i) => (i === log.length - 1 ? { ...seg, endedAt: now } : seg));
+    const nextLog = [...closedLog, { subject: newSubject, startedAt: now, endedAt: null }];
     try {
       await updateDoc(doc(db, 'studySessions', activeSession.id), {
-        endedAt: Date.now(),
-        amountSpent: spentMoney === 'yes' ? Number(amountSpent) || 0 : 0,
+        subject: newSubject,
+        subjectLog: nextLog,
       });
+    } catch (err: any) {
+      showAlert('Could not change subject', err.message);
+    }
+  };
+
+  const pauseSession = async () => {
+    if (!activeSession || activeSession.pausedAt) return;
+    try {
+      await updateDoc(doc(db, 'studySessions', activeSession.id), {
+        paused: true,
+        pausedAt: Date.now(),
+      });
+    } catch (err: any) {
+      showAlert('Could not pause session', err.message);
+    }
+  };
+
+  const resumeSession = async () => {
+    if (!activeSession || !activeSession.pausedAt) return;
+    try {
+      const additionalPauseMs = Date.now() - activeSession.pausedAt;
+      await updateDoc(doc(db, 'studySessions', activeSession.id), {
+        paused: false,
+        pausedAt: null,
+        pausedMs: (activeSession.pausedMs ?? 0) + additionalPauseMs,
+      });
+    } catch (err: any) {
+      showAlert('Could not resume session', err.message);
+    }
+  };
+
+  const reportBusyness = async (level: BusynessLevel) => {
+    if (!activeSession) return;
+    try {
+      await updateDoc(doc(db, 'studySessions', activeSession.id), { busynessReport: level });
+    } catch (err: any) {
+      showAlert('Could not report busyness', err.message);
+    }
+  };
+
+  const endSession = async () => {
+    if (!activeSession || !user) return;
+    setSubmitting(true);
+    try {
+      const endedAt = Date.now();
+      const totalPausedMs =
+        (activeSession.pausedMs ?? 0) +
+        (activeSession.pausedAt ? endedAt - activeSession.pausedAt : 0);
+      const activeMs = Math.max(0, endedAt - activeSession.startedAt - totalPausedMs);
+      const {
+        coins: coinsEarned,
+        newWeeklyStreak,
+        newLastStudyWeekKey,
+      } = computeStreakCoins(
+        activeMs,
+        endedAt,
+        profile?.weeklyStreak ?? 0,
+        profile?.lastStudyWeekKey
+      );
+      const earnedAllNighter = !activeSession.allNighter && isAllNighter(activeSession.startedAt, endedAt);
+      const log = getSessionSubjectSegments(activeSession);
+      const closedLog = log.map((seg, i) => (i === log.length - 1 ? { ...seg, endedAt } : seg));
+      await updateDoc(doc(db, 'studySessions', activeSession.id), {
+        endedAt,
+        amountSpent: spentMoney === 'yes' ? Number(amountSpent) || 0 : 0,
+        subjectLog: closedLog,
+        paused: false,
+        pausedAt: null,
+        pausedMs: totalPausedMs,
+        ...(earnedAllNighter ? { allNighter: true } : {}),
+      });
+      if (coinsEarned > 0 || earnedAllNighter) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          ...(coinsEarned > 0 ? { petCoins: increment(coinsEarned) } : {}),
+          ...(earnedAllNighter ? { allNighterCount: increment(1) } : {}),
+          weeklyStreak: newWeeklyStreak,
+          lastStudyWeekKey: newLastStudyWeekKey,
+        });
+      }
       setSpentMoney(null);
       setAmountSpent('');
+      if (earnedAllNighter) {
+        showAlert('🌙 All-nighter!', "You studied through the night — that's dedication.");
+      }
     } catch (err: any) {
       showAlert('Could not end session', err.message);
     } finally {
@@ -230,12 +355,27 @@ export default function CheckInScreen() {
           style={styles.container}
           contentContainerStyle={{ paddingBottom: 140 }}
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+          }
         >
-        <Text style={styles.heading}>You're studying</Text>
+        <Text style={styles.heading}>{activeSession.pausedAt ? '⏸ Paused' : "You're studying"}</Text>
         <View style={styles.activeCard}>
           <Text style={styles.activeCafe}>{activeSession.cafeName}</Text>
           <Text style={styles.activeSubject}>{activeSession.subject}</Text>
-          <CoffeeMugTimer startedAt={activeSession.startedAt} />
+          <CoffeeMugTimer
+            startedAt={activeSession.startedAt}
+            pausedMs={activeSession.pausedMs}
+            pausedAt={activeSession.pausedAt}
+          />
+          <Pressable
+            style={activeSession.pausedAt ? styles.resumeButton : styles.pauseButton}
+            onPress={activeSession.pausedAt ? resumeSession : pauseSession}
+          >
+            <Text style={activeSession.pausedAt ? styles.resumeButtonText : styles.pauseButtonText}>
+              {activeSession.pausedAt ? '▶️ Resume' : '⏸ Pause'}
+            </Text>
+          </Pressable>
           <View style={styles.activeIntensityPill}>
             <Text style={styles.activeIntensityText}>
               {intensityMeta(activeSession.intensity).emoji} {intensityMeta(activeSession.intensity).label}
@@ -247,8 +387,61 @@ export default function CheckInScreen() {
             </Text>
           )}
           <Text style={styles.activeVisibility}>
-            {activeSession.visibility === 'private' ? '🔒 Private' : '👥 Visible to friends'}
+            {visibilityMeta(activeSession.visibility).emoji} {visibilityMeta(activeSession.visibility).label}
           </Text>
+        </View>
+
+        {activeSession.cafeId !== HOME_LOCATION.id && (
+          <>
+            <Text style={styles.label}>How busy is it here?</Text>
+            <View style={styles.chipRow}>
+              {BUSYNESS_LEVELS.map((b) => (
+                <Pressable
+                  key={b.value}
+                  style={[styles.chip, activeSession.busynessReport === b.value && styles.chipSelected]}
+                  onPress={() => reportBusyness(b.value)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      activeSession.busynessReport === b.value && styles.chipTextSelected,
+                    ]}
+                  >
+                    {b.emoji} {b.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
+
+        {friendsAtCafe.length > 0 && (
+          <View style={styles.lockCard}>
+            <Text style={styles.lockCardTitle}>👥 Friends here right now</Text>
+            {friendsAtCafe.map((s) => {
+              const report = busynessMeta(s.busynessReport);
+              return (
+                <Text key={s.id} style={styles.friendReportText}>
+                  {s.displayName}: {report ? `${report.emoji} ${report.label}` : "hasn't reported yet"}
+                </Text>
+              );
+            })}
+          </View>
+        )}
+
+        <Text style={styles.label}>Switch subjects</Text>
+        <View style={styles.chipRow}>
+          {SUBJECTS.map((s) => (
+            <Pressable
+              key={s}
+              style={[styles.chip, activeSession.subject === s && styles.chipSelected]}
+              onPress={() => changeSubject(s)}
+            >
+              <Text style={[styles.chipText, activeSession.subject === s && styles.chipTextSelected]}>
+                {s}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {isGroupBlocked && (
@@ -338,19 +531,30 @@ export default function CheckInScreen() {
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 140 }}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
+        }
       >
       <Text style={styles.heading}>Start a study session</Text>
 
-      <Text style={styles.label}>Cafe</Text>
+      <Text style={styles.label}>Where are you studying?</Text>
       {selectedCafe ? (
         <Pressable style={styles.selectedPill} onPress={() => setSelectedCafe(null)}>
           <Text style={styles.selectedPillText}>{selectedCafe.name} ✕</Text>
         </Pressable>
       ) : (
         <>
+          <Pressable
+            style={styles.homeLocationButton}
+            onPress={() => setSelectedCafe(HOME_LOCATION)}
+          >
+            <Text style={styles.homeLocationButtonText}>
+              🛏️ Studying at my Bedroom/Dorm instead
+            </Text>
+          </Pressable>
           <SearchBar
             style={{ marginBottom: 8 }}
-            placeholder="Search cafes (e.g. Duluth, Alchemist)"
+            placeholder="Or search cafes (e.g. Duluth, Alchemist)"
             value={search}
             onChangeText={setSearch}
           />
@@ -477,23 +681,21 @@ export default function CheckInScreen() {
 
       <Text style={styles.label}>Who can see this session?</Text>
       <View style={styles.chipRow}>
-        <Pressable
-          style={[styles.chip, visibility === 'public' && styles.chipSelected]}
-          onPress={() => setVisibility('public')}
-        >
-          <Text style={[styles.chipText, visibility === 'public' && styles.chipTextSelected]}>
-            👥 Friends
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.chip, visibility === 'private' && styles.chipSelected]}
-          onPress={() => setVisibility('private')}
-        >
-          <Text style={[styles.chipText, visibility === 'private' && styles.chipTextSelected]}>
-            🔒 Just me
-          </Text>
-        </Pressable>
+        {VISIBILITY_LEVELS.filter((v) => v.value !== 'community' || !!profile?.community).map((v) => (
+          <Pressable
+            key={v.value}
+            style={[styles.chip, visibility === v.value && styles.chipSelected]}
+            onPress={() => setVisibility(v.value)}
+          >
+            <Text style={[styles.chipText, visibility === v.value && styles.chipTextSelected]}>
+              {v.emoji} {v.label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
+      {visibility === 'everyone' && (
+        <Text style={styles.hint}>Anyone using the app will be able to see this session.</Text>
+      )}
 
       <Text style={styles.label}>Distractions</Text>
       <View style={styles.chipRow}>
@@ -668,6 +870,33 @@ const styles = StyleSheet.create({
   },
   activeCafe: { fontSize: 18, fontWeight: '700', alignSelf: 'flex-start' },
   activeSubject: { fontSize: 14, color: COLORS.textMuted, marginTop: 4, alignSelf: 'flex-start' },
+  friendReportText: { fontSize: 13, color: COLORS.textMuted, marginBottom: 4 },
+  pauseButton: {
+    backgroundColor: COLORS.accentLight,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  resumeButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    marginTop: 4,
+  },
+  pauseButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+  resumeButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.white },
+  homeLocationButton: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 10,
+  },
+  homeLocationButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
   activeIntensityPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,

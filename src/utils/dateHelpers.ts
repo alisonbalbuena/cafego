@@ -16,12 +16,21 @@ export function parseDateKey(key: string): Date {
   return new Date(y, m - 1, d);
 }
 
+export function monthKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export function startOfWeek(ts: number): number {
   const d = new Date(startOfDay(ts));
   const day = d.getDay();
   const diff = (day + 6) % 7; // days since Monday
   d.setDate(d.getDate() - diff);
   return d.getTime();
+}
+
+export function weekKey(ts: number): string {
+  return dateKey(startOfWeek(ts));
 }
 
 export function startOfMonth(ts: number): number {

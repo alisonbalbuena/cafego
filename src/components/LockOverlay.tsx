@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, increment, updateDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { useActiveLock } from '../hooks/useActiveLock';
@@ -10,11 +10,15 @@ import { showAlert } from '../utils/alert';
 import { applyBuddyCode } from '../utils/buddyCode';
 import { generateEscapeCode } from '../utils/code';
 import { COLORS, RADIUS } from '../theme';
-import { ChecklistItem } from '../types';
+import { ChecklistItem, getSessionSubjectSegments } from '../types';
+import { isAllNighter } from '../utils/allNighter';
+import { computeStreakCoins } from '../utils/streakCoins';
+import { monthKey } from '../utils/dateHelpers';
+import { getRemainingOverrides, MAX_MONTHLY_OVERRIDES } from '../utils/escapeLimit';
 import CoffeeMugTimer from './CoffeeMugTimer';
 
 export default function LockOverlay() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { session } = useActiveLock();
   const [codeInput, setCodeInput] = useState('');
   const [applying, setApplying] = useState(false);
@@ -27,6 +31,12 @@ export default function LockOverlay() {
   const isGroup = session.studyMode === 'group';
   const checklist = session.checklist ?? [];
   const doneCount = checklist.filter((c) => c.done).length;
+  const currentMonthKey = monthKey(Date.now());
+  const remainingOverrides = getRemainingOverrides(
+    profile?.escapeOverrideCount,
+    profile?.escapeOverrideMonthKey,
+    currentMonthKey
+  );
 
   const applyCode = async () => {
     const code = codeInput.trim();
@@ -73,6 +83,13 @@ export default function LockOverlay() {
   };
 
   const beginEscape = () => {
+    if (remainingOverrides <= 0) {
+      showAlert(
+        'No overrides left',
+        `You've used all ${MAX_MONTHLY_OVERRIDES} emergency overrides this month. They reset next month.`
+      );
+      return;
+    }
     setEscapeChallenge(generateEscapeCode());
     setEscapeInput('');
   };
@@ -85,11 +102,48 @@ export default function LockOverlay() {
   const confirmEscape = async () => {
     if (!escapeChallenge || escapeInput !== escapeChallenge) return;
     try {
+      const endedAt = Date.now();
+      const totalPausedMs =
+        (session.pausedMs ?? 0) + (session.pausedAt ? endedAt - session.pausedAt : 0);
+      const activeMs = Math.max(0, endedAt - session.startedAt - totalPausedMs);
+      const {
+        coins: coinsEarned,
+        newWeeklyStreak,
+        newLastStudyWeekKey,
+      } = computeStreakCoins(
+        activeMs,
+        endedAt,
+        profile?.weeklyStreak ?? 0,
+        profile?.lastStudyWeekKey
+      );
+      const earnedAllNighter = !session.allNighter && isAllNighter(session.startedAt, endedAt);
+      const log = getSessionSubjectSegments(session);
+      const closedLog = log.map((seg, i) => (i === log.length - 1 ? { ...seg, endedAt } : seg));
+      const nextOverrideCount =
+        profile?.escapeOverrideMonthKey === currentMonthKey
+          ? (profile?.escapeOverrideCount ?? 0) + 1
+          : 1;
       await updateDoc(doc(db, 'studySessions', session.id), {
-        endedAt: Date.now(),
+        endedAt,
         amountSpent: 0,
         locked: false,
+        subjectLog: closedLog,
+        paused: false,
+        pausedAt: null,
+        pausedMs: totalPausedMs,
+        ...(earnedAllNighter ? { allNighter: true } : {}),
       });
+      await updateDoc(doc(db, 'users', user.uid), {
+        ...(coinsEarned > 0 ? { petCoins: increment(coinsEarned) } : {}),
+        ...(earnedAllNighter ? { allNighterCount: increment(1) } : {}),
+        weeklyStreak: newWeeklyStreak,
+        lastStudyWeekKey: newLastStudyWeekKey,
+        escapeOverrideCount: nextOverrideCount,
+        escapeOverrideMonthKey: currentMonthKey,
+      });
+      if (earnedAllNighter) {
+        showAlert('🌙 All-nighter!', "You studied through the night — that's dedication.");
+      }
     } catch (err: any) {
       showAlert('Could not end session', err.message);
     }
@@ -103,7 +157,11 @@ export default function LockOverlay() {
     >
       <View style={styles.card}>
         <Text style={styles.lockedTitle}>🔒 Locked in</Text>
-        <CoffeeMugTimer startedAt={session.startedAt} />
+        <CoffeeMugTimer
+          startedAt={session.startedAt}
+          pausedMs={session.pausedMs}
+          pausedAt={session.pausedAt}
+        />
 
         {isGroup ? (
           <>
@@ -147,16 +205,16 @@ export default function LockOverlay() {
 
         {escapeChallenge === null ? (
           <Pressable style={styles.endButton} onPress={beginEscape}>
-            <Text style={styles.endButtonText}>Can't unlock? End session</Text>
+            <Text style={styles.endButtonText}>
+              Can't unlock? End session ({remainingOverrides} left this month)
+            </Text>
           </Pressable>
         ) : (
           <View style={styles.escapeCard}>
             <Text style={styles.escapeHint}>
               To end your session without being unlocked, type this exactly:
             </Text>
-            <Text selectable style={styles.escapeCode}>
-              {escapeChallenge}
-            </Text>
+            <Text style={styles.escapeCode}>{escapeChallenge}</Text>
             <TextInput
               style={styles.escapeInput}
               placeholder="Type the code above"
@@ -165,6 +223,7 @@ export default function LockOverlay() {
               onChangeText={setEscapeInput}
               autoCapitalize="none"
               autoCorrect={false}
+              contextMenuHidden
               multiline
             />
             <Pressable
