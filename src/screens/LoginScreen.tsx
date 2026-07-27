@@ -15,18 +15,18 @@ import { COLORS, RADIUS } from '../theme';
 
 export default function LoginScreen({ navigation }: any) {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      showAlert('Missing info', 'Enter your email and password.');
+    if (!identifier || !password) {
+      showAlert('Missing info', 'Enter your email or username and password.');
       return;
     }
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
+      await signIn(identifier.trim(), password);
     } catch (err: any) {
       showAlert('Login failed', err.message);
     } finally {
@@ -46,15 +46,15 @@ export default function LoginScreen({ navigation }: any) {
       <Text style={styles.subtitle}>Find your friends. Find your cafe.</Text>
 
       <View style={styles.inputWrap}>
-        <Ionicons name="mail-outline" size={18} color={COLORS.textMuted} />
+        <Ionicons name="person-outline" size={18} color={COLORS.textMuted} />
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Email or username"
           placeholderTextColor={COLORS.textFaint}
           autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+          autoCorrect={false}
+          value={identifier}
+          onChangeText={setIdentifier}
         />
       </View>
       <View style={styles.inputWrap}>

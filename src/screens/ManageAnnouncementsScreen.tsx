@@ -24,8 +24,9 @@ import { CAFES } from '../data/cafes';
 import { CafeAnnouncement } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
+import BackButton from '../components/BackButton';
 
-export default function ManageAnnouncementsScreen() {
+export default function ManageAnnouncementsScreen({ navigation }: any) {
   const { profile } = useAuth();
   const [announcements, setAnnouncements] = useState<CafeAnnouncement[]>([]);
   const [message, setMessage] = useState('');
@@ -82,7 +83,10 @@ export default function ManageAnnouncementsScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.heading}>Announcements</Text>
+      <View style={styles.headingRow}>
+        <BackButton navigation={navigation} />
+        <Text style={styles.heading}>Announcements</Text>
+      </View>
 
       <TextInput
         style={styles.input}
@@ -118,7 +122,8 @@ export default function ManageAnnouncementsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,

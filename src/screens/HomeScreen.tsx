@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import * as Location from 'expo-location';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
@@ -12,7 +13,13 @@ import StudyCalendarSection from '../components/StudyCalendarSection';
 import NudgeBanner from '../components/NudgeBanner';
 import MapPreview from '../components/MapPreview';
 import CommunityFeedSection from '../components/CommunityFeedSection';
+import WeeklyRecapCard from '../components/WeeklyRecapCard';
 import { useRefresh } from '../hooks/useRefresh';
+import { isGooglePlacesConfigured, searchCafesByText } from '../utils/googlePlaces';
+import { SHOW_ANNOUNCEMENTS } from '../constants';
+import { UI_ICONS } from '../data/uiIcons';
+import BuddyAdventureStrip from '../components/BuddyAdventureStrip';
+import { useBuddyPosts } from '../hooks/useBuddyPosts';
 
 interface Friend {
   uid: string;
@@ -53,6 +60,36 @@ export default function HomeScreen({ navigation }: any) {
   const [activeFriends, setActiveFriends] = useState<StudySession[]>([]);
   const [recentSessions, setRecentSessions] = useState<StudySession[]>([]);
   const [announcements, setAnnouncements] = useState<CafeAnnouncement[]>([]);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [liveSearchCafes, setLiveSearchCafes] = useState<Cafe[] | null>(null);
+  const buddyPostUids = useMemo(
+    () => (user ? [user.uid, ...friends.map((f) => f.uid)] : []),
+    [user, friends]
+  );
+  const buddyPosts = useBuddyPosts(buddyPostUids);
+
+  useEffect(() => {
+    (async () => {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) return;
+      const position = await Location.getCurrentPositionAsync({});
+      setLocation(position);
+    })();
+  }, []);
+
+  useEffect(() => {
+    const term = search.trim();
+    if (!term || !location || !isGooglePlacesConfigured()) {
+      setLiveSearchCafes(null);
+      return;
+    }
+    const timeout = setTimeout(() => {
+      searchCafesByText(term, location.coords.latitude, location.coords.longitude).then(
+        setLiveSearchCafes
+      );
+    }, 400);
+    return () => clearTimeout(timeout);
+  }, [search, location]);
 
   useEffect(() => {
     if (!user) return;
@@ -98,7 +135,7 @@ export default function HomeScreen({ navigation }: any) {
   }, [user, friends]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !SHOW_ANNOUNCEMENTS) return;
     const q = query(collection(db, 'rewardAccounts'), where('uid', '==', user.uid));
     let innerUnsubscribe: (() => void) | null = null;
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -129,11 +166,12 @@ export default function HomeScreen({ navigation }: any) {
 
   const filteredCafes = useMemo(() => {
     if (!search.trim()) return [];
+    if (liveSearchCafes !== null) return liveSearchCafes;
     const term = search.toLowerCase();
     return CAFES.filter(
       (c) => c.name.toLowerCase().includes(term) || c.neighborhood.toLowerCase().includes(term)
     );
-  }, [search]);
+  }, [search, liveSearchCafes]);
 
   const openCafe = (cafe: Cafe) => {
     navigation.navigate('CafeProfile', { cafeId: cafe.id, cafeName: cafe.name });
@@ -185,6 +223,8 @@ export default function HomeScreen({ navigation }: any) {
 
       <NudgeBanner />
 
+      {/* Weekly Recap ("This week" summary) hidden for now — bring back when ready. */}
+
       <SearchBar
         style={{ marginBottom: 16 }}
         placeholder="Search all cafes"
@@ -229,6 +269,17 @@ export default function HomeScreen({ navigation }: any) {
         )}
       </View>
 
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.buddyAdventureEmoji}>🎒</Text>
+        <Text style={styles.sectionTitle}>Buddy adventures</Text>
+      </View>
+      <BuddyAdventureStrip
+        posts={buddyPosts}
+        showAuthor
+        currentUid={user?.uid}
+        emptyText="No buddy adventures yet — take yours out from the Coffee Friends tab or a check-in photo!"
+      />
+
       <CommunityFeedSection />
 
       <View style={styles.sectionHeaderRow}>
@@ -255,37 +306,41 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       <View style={styles.sectionHeaderRow}>
-        <Ionicons name="calendar" size={16} color={COLORS.textMuted} />
+        <Image source={UI_ICONS.studyLog} style={styles.sectionHeaderIcon} resizeMode="contain" />
         <Text style={styles.sectionTitle}>Your study log</Text>
       </View>
       <StudyCalendarSection />
 
-      <View style={styles.sectionHeaderRow}>
-        <Ionicons name="megaphone" size={16} color={COLORS.textMuted} />
-        <Text style={styles.sectionTitle}>Announcements</Text>
-      </View>
-      {announcements.length === 0 ? (
-        <View style={styles.card}>
-          <Text style={styles.emptyText}>
-            Visit a cafe with a rewards program to see their announcements here.
-          </Text>
-        </View>
-      ) : (
-        announcements.map((a) => (
-          <Pressable
-            key={a.id}
-            style={styles.announcementCard}
-            onPress={() =>
-              navigation.navigate('CafeProfile', { cafeId: a.cafeId, cafeName: a.cafeName })
-            }
-          >
-            <Text style={styles.announcementCafe}>{a.cafeName}</Text>
-            <Text style={styles.announcementMessage}>{a.message}</Text>
-            <Text style={styles.announcementDate}>
-              {new Date(a.createdAt).toLocaleDateString()}
-            </Text>
-          </Pressable>
-        ))
+      {SHOW_ANNOUNCEMENTS && (
+        <>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="megaphone" size={16} color={COLORS.textMuted} />
+            <Text style={styles.sectionTitle}>Announcements</Text>
+          </View>
+          {announcements.length === 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.emptyText}>
+                Visit a cafe with a rewards program to see their announcements here.
+              </Text>
+            </View>
+          ) : (
+            announcements.map((a) => (
+              <Pressable
+                key={a.id}
+                style={styles.announcementCard}
+                onPress={() =>
+                  navigation.navigate('CafeProfile', { cafeId: a.cafeId, cafeName: a.cafeName })
+                }
+              >
+                <Text style={styles.announcementCafe}>{a.cafeName}</Text>
+                <Text style={styles.announcementMessage}>{a.message}</Text>
+                <Text style={styles.announcementDate}>
+                  {new Date(a.createdAt).toLocaleDateString()}
+                </Text>
+              </Pressable>
+            ))
+          )}
+        </>
       )}
     </ScrollView>
   );
@@ -313,6 +368,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   mapButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 14, flex: 1 },
+  sectionHeaderIcon: { width: 18, height: 18 },
+  buddyAdventureEmoji: { fontSize: 16 },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',

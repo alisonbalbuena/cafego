@@ -8,3 +8,7 @@ export const SHOW_LOYALTY_PROGRAM = false;
 // Toggle to bring back the Admin tab (cafe claim approval/unclaim tools) without
 // deleting any of that code.
 export const SHOW_ADMIN_TAB = false;
+
+// Toggle to bring back cafe announcements (Home section, cafe profile section,
+// and the merchant "Manage Announcements" tool) without deleting any of that code.
+export const SHOW_ANNOUNCEMENTS = false;

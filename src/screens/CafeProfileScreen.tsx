@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { collection, doc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, query, setDoc, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../firebase/config';
@@ -23,11 +23,13 @@ import {
   CafeProgram,
   CafeReview,
   MenuItem,
+  MenuPhoto,
   RewardAccount,
 } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
-import { SHOW_LOYALTY_PROGRAM } from '../constants';
+import { SHOW_ANNOUNCEMENTS, SHOW_LOYALTY_PROGRAM } from '../constants';
+import BackButton from '../components/BackButton';
 
 const REVIEW_CATEGORIES: { key: keyof CafeReview; label: string }[] = [
   { key: 'ambienceRating', label: 'Ambience' },
@@ -41,13 +43,14 @@ interface Friend {
   displayName: string;
 }
 
-export default function CafeProfileScreen({ route }: any) {
-  const { cafeId, cafeName } = route.params;
+export default function CafeProfileScreen({ route, navigation }: any) {
+  const { cafeId, cafeName, confirmCafe } = route.params;
   const { user } = useAuth();
   const [program, setProgram] = useState<CafeProgram | null>(null);
   const [account, setAccount] = useState<RewardAccount | null>(null);
   const [announcements, setAnnouncements] = useState<CafeAnnouncement[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [menuPhotos, setMenuPhotos] = useState<MenuPhoto[]>([]);
   const [reviews, setReviews] = useState<CafeReview[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [ambience, setAmbience] = useState(0);
@@ -76,6 +79,7 @@ export default function CafeProfileScreen({ route }: any) {
   }, [cafeId, user]);
 
   useEffect(() => {
+    if (!SHOW_ANNOUNCEMENTS) return;
     const q = query(collection(db, 'cafeAnnouncements'), where('cafeId', '==', cafeId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
@@ -89,6 +93,16 @@ export default function CafeProfileScreen({ route }: any) {
     const q = query(collection(db, 'menuItems'), where('cafeId', '==', cafeId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setMenu(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
+    });
+    return unsubscribe;
+  }, [cafeId]);
+
+  useEffect(() => {
+    const q = query(collection(db, 'menuPhotos'), where('cafeId', '==', cafeId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) }) as MenuPhoto);
+      docs.sort((a, b) => b.createdAt - a.createdAt);
+      setMenuPhotos(docs);
     });
     return unsubscribe;
   }, [cafeId]);
@@ -177,6 +191,14 @@ export default function CafeProfileScreen({ route }: any) {
     setReviewPhotos((prev) => prev.filter((u) => u !== url));
   };
 
+  const removeMenuPhoto = async (photoId: string) => {
+    try {
+      await deleteDoc(doc(db, 'menuPhotos', photoId));
+    } catch (err: any) {
+      showAlert('Could not remove photo', err.message);
+    }
+  };
+
   const submitReview = async () => {
     if (!user) return;
     if (!ambience || !drinks || !prices || !environment) {
@@ -210,8 +232,11 @@ export default function CafeProfileScreen({ route }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView>
-        <Text style={styles.heading}>{cafeName}</Text>
+      <ScrollView contentContainerStyle={confirmCafe ? { paddingBottom: 80 } : undefined}>
+        <View style={styles.headingRow}>
+          <BackButton navigation={navigation} />
+          <Text style={styles.heading}>{cafeName}</Text>
+        </View>
 
         {SHOW_LOYALTY_PROGRAM && program && program.status !== 'pending' && (
           <View style={styles.progressCard}>
@@ -230,18 +255,22 @@ export default function CafeProfileScreen({ route }: any) {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Announcements</Text>
-        {announcements.length === 0 ? (
-          <Text style={styles.emptyText}>No announcements yet.</Text>
-        ) : (
-          announcements.map((a) => (
-            <View key={a.id} style={styles.announcementRow}>
-              <Text style={styles.announcementMessage}>{a.message}</Text>
-              <Text style={styles.announcementDate}>
-                {new Date(a.createdAt).toLocaleDateString()}
-              </Text>
-            </View>
-          ))
+        {SHOW_ANNOUNCEMENTS && (
+          <>
+            <Text style={styles.sectionTitle}>Announcements</Text>
+            {announcements.length === 0 ? (
+              <Text style={styles.emptyText}>No announcements yet.</Text>
+            ) : (
+              announcements.map((a) => (
+                <View key={a.id} style={styles.announcementRow}>
+                  <Text style={styles.announcementMessage}>{a.message}</Text>
+                  <Text style={styles.announcementDate}>
+                    {new Date(a.createdAt).toLocaleDateString()}
+                  </Text>
+                </View>
+              ))
+            )}
+          </>
         )}
 
         <Text style={styles.sectionTitle}>Menu</Text>
@@ -277,6 +306,30 @@ export default function CafeProfileScreen({ route }: any) {
             </View>
           ))
         )}
+
+        <Text style={styles.communityPhotosLabel}>📸 Menu photos from students</Text>
+        {menuPhotos.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoRow}>
+            {menuPhotos.map((p) => (
+              <View key={p.id} style={styles.reviewPhotoWrap}>
+                <Pressable onPress={() => setViewerUrl(p.url)}>
+                  <Image source={{ uri: p.url }} style={styles.photo} />
+                </Pressable>
+                {p.uid === user?.uid && (
+                  <Pressable style={styles.removePhotoButton} onPress={() => removeMenuPhoto(p.id)}>
+                    <Text style={styles.removePhotoText}>✕</Text>
+                  </Pressable>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+        <Pressable
+          style={styles.addMenuPhotoButton}
+          onPress={() => navigation.navigate('AddMenuPhoto', { cafeId, cafeName })}
+        >
+          <Text style={styles.addMenuPhotoButtonText}>+ Add a menu photo</Text>
+        </Pressable>
 
         <Text style={styles.sectionTitle}>Friends' reviews</Text>
         {friendReviews.length === 0 ? (
@@ -407,6 +460,17 @@ export default function CafeProfileScreen({ route }: any) {
         )}
       </ScrollView>
 
+      {confirmCafe && (
+        <View style={styles.confirmBar}>
+          <Pressable
+            style={styles.confirmButton}
+            onPress={() => navigation.navigate('StudyMain', { confirmedCafe: confirmCafe })}
+          >
+            <Text style={styles.confirmButtonText}>✅ Study here</Text>
+          </Pressable>
+        </View>
+      )}
+
       <Modal
         visible={!!viewerUrl}
         transparent
@@ -425,7 +489,8 @@ export default function CafeProfileScreen({ route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   progressCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 20 },
   progressLabel: { fontSize: 14, fontWeight: '600' },
   progressValue: { fontSize: 13, color: COLORS.success, marginTop: 4, fontWeight: '600' },
@@ -446,6 +511,23 @@ const styles = StyleSheet.create({
   menuPrice: { fontSize: 14, fontWeight: '600' },
   link: { color: COLORS.link, fontSize: 14, fontWeight: '600', marginBottom: 10 },
   photoRow: { marginBottom: 12 },
+  communityPhotosLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  addMenuPhotoButton: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addMenuPhotoButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   photo: { width: 140, height: 140, borderRadius: 10, marginRight: 8, backgroundColor: COLORS.card },
   viewerBackdrop: {
     flex: 1,
@@ -530,4 +612,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  confirmBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  confirmButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

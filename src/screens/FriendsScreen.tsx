@@ -4,6 +4,7 @@ import {
   Text,
   Pressable,
   Image,
+  ImageSourcePropType,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -28,6 +29,8 @@ import { COLORS, RADIUS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import StudyNotesStrip from '../components/StudyNotesStrip';
 import { useRefresh } from '../hooks/useRefresh';
+import { getPairStats } from '../utils/pairStats';
+import { MEDAL_ICONS, UI_ICONS } from '../data/uiIcons';
 
 interface Friend {
   uid: string;
@@ -49,9 +52,8 @@ interface LeaderboardEntry {
   cafeCount: number;
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
 
-export default function FriendsScreen() {
+export default function FriendsScreen({ navigation }: any) {
   const { user, profile } = useAuth();
   const { refreshing, onRefresh } = useRefresh();
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -62,6 +64,25 @@ export default function FriendsScreen() {
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
   const [friendProfiles, setFriendProfiles] = useState<Record<string, UserProfile>>({});
+  const [pairStats, setPairStats] = useState<Record<string, number>>({});
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleAvailability = async () => {
+    if (!user) return;
+    const isAvailable = (profile?.availableUntil ?? 0) > now;
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        availableUntil: isAvailable ? null : Date.now() + 60 * 60 * 1000,
+      });
+    } catch (err: any) {
+      showAlert('Could not update availability', err.message);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -128,16 +149,32 @@ export default function FriendsScreen() {
       return;
     }
     const uids = friends.slice(0, 30).map((f) => f.uid);
-    (async () => {
-      const q = query(collection(db, 'users'), where('uid', 'in', uids));
-      const snapshot = await getDocs(q);
+    const q = query(collection(db, 'users'), where('uid', 'in', uids));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const next: Record<string, UserProfile> = {};
       snapshot.docs.forEach((d) => {
         next[d.id] = d.data() as UserProfile;
       });
       setFriendProfiles(next);
-    })();
+    });
+    return unsubscribe;
   }, [friends]);
+
+  useEffect(() => {
+    if (!user || friends.length === 0) {
+      setPairStats({});
+      return;
+    }
+    (async () => {
+      const entries = await Promise.all(
+        friends.slice(0, 30).map(async (f) => {
+          const stats = await getPairStats(user.uid, f.uid);
+          return [f.uid, stats?.sessionsThisWeek ?? 0] as const;
+        })
+      );
+      setPairStats(Object.fromEntries(entries));
+    })();
+  }, [user, friends]);
 
   const leaderboardEntries = useMemo<LeaderboardEntry[]>(() => {
     if (!user) return [];
@@ -273,9 +310,17 @@ export default function FriendsScreen() {
     }
   };
 
-  const renderBoard = (title: string, entries: LeaderboardEntry[], valueFor: (e: LeaderboardEntry) => string) => (
+  const renderBoard = (
+    title: string,
+    entries: LeaderboardEntry[],
+    valueFor: (e: LeaderboardEntry) => string,
+    icon?: ImageSourcePropType
+  ) => (
     <View style={styles.boardCard}>
-      <Text style={styles.boardTitle}>{title}</Text>
+      <View style={styles.boardTitleRow}>
+        {icon ? <Image source={icon} style={styles.boardTitleIcon} resizeMode="contain" /> : null}
+        <Text style={styles.boardTitle}>{title}</Text>
+      </View>
       {entries.length === 0 ? (
         <Text style={styles.emptyText}>No study sessions yet.</Text>
       ) : (
@@ -289,7 +334,11 @@ export default function FriendsScreen() {
             ]}
           >
             <View style={styles.rankBadge}>
-              <Text style={styles.rankBadgeText}>{MEDALS[i] ?? i + 1}</Text>
+              {MEDAL_ICONS[i] ? (
+                <Image source={MEDAL_ICONS[i]} style={styles.rankBadgeIcon} resizeMode="contain" />
+              ) : (
+                <Text style={styles.rankBadgeText}>{i + 1}</Text>
+              )}
             </View>
             <View style={styles.leaderboardAvatar}>
               <Text style={styles.leaderboardAvatarText}>
@@ -316,10 +365,40 @@ export default function FriendsScreen() {
           <View>
             <Text style={styles.heading}>Friends</Text>
 
-            <Text style={styles.sectionTitle}>📝 Notes</Text>
+            <View style={styles.notesHeaderRow}>
+              <Image source={UI_ICONS.notes} style={styles.notesHeaderIcon} resizeMode="contain" />
+              <Text style={styles.sectionTitle}>Notes</Text>
+            </View>
             <View style={{ marginBottom: 16 }}>
               <StudyNotesStrip friends={friends} />
             </View>
+
+            <Pressable
+              style={[styles.studyPlansButton, styles.studyPlansButtonRow]}
+              onPress={() => navigation.navigate('StudyPlans')}
+            >
+              <Image source={UI_ICONS.studyPlans} style={styles.studyPlansButtonIcon} resizeMode="contain" />
+              <Text style={styles.studyPlansButtonText}>Study plans</Text>
+            </Pressable>
+
+            <Pressable
+              style={[styles.studyPlansButton, styles.studyPlansButtonRow]}
+              onPress={() => navigation.navigate('StudyInvites')}
+            >
+              <Image source={UI_ICONS.studyInvites} style={styles.studyPlansButtonIcon} resizeMode="contain" />
+              <Text style={styles.studyPlansButtonText}>Study invites</Text>
+            </Pressable>
+
+            <Pressable style={styles.availabilityToggle} onPress={toggleAvailability}>
+              <Text style={styles.availabilityToggleText}>
+                {(profile?.availableUntil ?? 0) > now
+                  ? `🟢 You're free to study — tap to cancel (${Math.max(
+                      1,
+                      Math.round((profile!.availableUntil! - now) / 60000)
+                    )}m left)`
+                  : '⚪ Mark yourself free to study for the next hour'}
+              </Text>
+            </Pressable>
 
             <SearchBar
               style={{ marginBottom: 8 }}
@@ -406,13 +485,29 @@ export default function FriendsScreen() {
                 ) : (
                   <Text style={styles.friendStatusIdle}>Not studying right now</Text>
                 )}
+                {!session && (friendProfile?.availableUntil ?? 0) > now && (
+                  <Text style={styles.availableBadge}>
+                    🟢 Free to study for the next{' '}
+                    {Math.max(1, Math.round((friendProfile!.availableUntil! - now) / 60000))}m
+                  </Text>
+                )}
                 {together > 0 && (
                   <Text style={styles.togetherText}>
                     📚 Studied together {together}×
                   </Text>
                 )}
                 {showStreak && (
-                  <Text style={styles.togetherText}>🔥 {friendProfile!.weeklyStreak} week streak</Text>
+                  <View style={styles.togetherRow}>
+                    <Image source={UI_ICONS.streak} style={styles.togetherIcon} resizeMode="contain" />
+                    <Text style={[styles.togetherText, { marginTop: 0 }]}>
+                      {friendProfile!.weeklyStreak} week streak
+                    </Text>
+                  </View>
+                )}
+                {(pairStats[item.uid] ?? 0) > 0 && (
+                  <Text style={styles.togetherText}>
+                    🔗 Synced {pairStats[item.uid]}× this week
+                  </Text>
                 )}
               </View>
               <View style={styles.friendActions}>
@@ -427,10 +522,15 @@ export default function FriendsScreen() {
         ListFooterComponent={
           <View style={styles.leaderboardSection}>
             <View style={styles.leaderboardHeaderRow}>
-              <Text style={styles.leaderboardEmoji}>🏆</Text>
+              <Image source={UI_ICONS.leaderboard} style={styles.leaderboardIcon} resizeMode="contain" />
               <Text style={styles.leaderboardHeading}>Leaderboard</Text>
             </View>
-            {renderBoard('⏱️ Most time studied', byTimeStudied, (e) => formatDuration(e.totalMs))}
+            {renderBoard(
+              'Most time studied',
+              byTimeStudied,
+              (e) => formatDuration(e.totalMs),
+              UI_ICONS.mostTimeStudied
+            )}
             {renderBoard('☕ Most cafes visited', byCafesVisited, (e) => `${e.cafeCount}`)}
           </View>
         }
@@ -463,6 +563,30 @@ const styles = StyleSheet.create({
   addButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8 },
+  notesHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  notesHeaderIcon: { width: 16, height: 16 },
+  studyPlansButton: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  studyPlansButtonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  studyPlansButtonIcon: { width: 20, height: 20 },
+  studyPlansButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  availabilityToggle: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: COLORS.accentLight,
+  },
+  availabilityToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+  availableBadge: { fontSize: 12, color: COLORS.success, fontWeight: '600', marginTop: 4 },
   requestRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -489,6 +613,8 @@ const styles = StyleSheet.create({
   friendStatus: { fontSize: 13, color: COLORS.success, marginTop: 2 },
   friendStatusIdle: { fontSize: 13, color: COLORS.textFaint, marginTop: 2 },
   togetherText: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  togetherRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  togetherIcon: { width: 14, height: 14 },
   friendActions: { alignItems: 'flex-end', gap: 6 },
   nudgeButton: {
     borderWidth: 1,
@@ -522,7 +648,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 16,
   },
-  leaderboardEmoji: { fontSize: 24 },
+  leaderboardIcon: { width: 26, height: 26 },
   leaderboardHeading: { fontSize: 20, fontWeight: '700', color: COLORS.text },
   boardCard: {
     backgroundColor: COLORS.surface,
@@ -532,7 +658,9 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
-  boardTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 10 },
+  boardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  boardTitleIcon: { width: 18, height: 18 },
+  boardTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   leaderboardRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,6 +675,7 @@ const styles = StyleSheet.create({
     width: 28,
     alignItems: 'center',
   },
+  rankBadgeIcon: { width: 24, height: 24 },
   rankBadgeText: { fontSize: 16, fontWeight: '700', color: COLORS.textMuted },
   leaderboardAvatar: {
     width: 36,

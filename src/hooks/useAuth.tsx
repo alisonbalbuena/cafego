@@ -10,6 +10,7 @@ import {
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   query,
@@ -19,6 +20,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { UserProfile } from '../types';
+import { DEFAULT_COFFEE_FRIEND_ID } from '../data/coffeeFriends';
 
 const LOYALTY_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -65,8 +67,36 @@ interface AuthContextValue {
     lastName: string,
     username: string
   ) => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+}
+
+/** Resolves a login identifier to an email address, so users can log in with
+ * either. Firebase Auth itself only understands email/password. */
+async function resolveLoginEmail(identifier: string): Promise<string> {
+  const trimmed = identifier.trim();
+  if (trimmed.includes('@')) return trimmed;
+
+  const username = trimmed.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const snapshot = await getDoc(doc(db, 'usernameEmails', username));
+  if (!snapshot.exists()) {
+    throw new Error('No account found with that username.');
+  }
+  return (snapshot.data() as { email: string }).email;
+}
+
+/** Best-effort backfill for accounts created before username login existed. */
+async function ensureUsernameEmailMapping(uid: string, username: string, email: string) {
+  if (!username || !email) return;
+  try {
+    const mappingRef = doc(db, 'usernameEmails', username);
+    const existing = await getDoc(mappingRef);
+    if (!existing.exists()) {
+      await setDoc(mappingRef, { uid, email });
+    }
+  } catch {
+    // Non-critical — the user can still log in with email.
+  }
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -114,10 +144,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       if (data.petCoins === undefined) {
-        // Backfill accounts created before the study-buddy pet game existed.
+        // Backfill accounts created before the coin/coffee-friends game existed.
         await setDoc(
           doc(db, 'users', user.uid),
-          { petName: 'Buddy', petCoins: 0, petGrowth: 0, petOutfit: [], allNighterCount: 0 },
+          {
+            petCoins: 0,
+            unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID],
+            activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID,
+            allNighterCount: 0,
+          },
+          { merge: true }
+        );
+        return;
+      }
+      if (data.unlockedCoffeeFriends === undefined) {
+        // Backfill accounts created before the buddy system was replaced with
+        // unlockable coffee friends.
+        await setDoc(
+          doc(db, 'users', user.uid),
+          { unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID], activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID },
           { merge: true }
         );
         return;
@@ -126,6 +171,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Backfill accounts created before the all-nighter tracker existed.
         await setDoc(doc(db, 'users', user.uid), { allNighterCount: 0 }, { merge: true });
         return;
+      }
+      if (data.username) {
+        ensureUsernameEmailMapping(user.uid, data.username, data.email ?? user.email ?? '');
       }
       setProfile(data as UserProfile);
     });
@@ -159,6 +207,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const displayName = `${firstName} ${lastName}`.trim();
     await updateProfile(credential.user, { displayName });
     const loyaltyCode = await generateUniqueLoyaltyCode();
+    await setDoc(doc(db, 'usernameEmails', cleanUsername), {
+      uid: credential.user.uid,
+      email,
+    });
     await setDoc(doc(db, 'users', credential.user.uid), {
       uid: credential.user.uid,
       displayName,
@@ -170,15 +222,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       createdAt: serverTimestamp(),
       role: 'customer',
       loyaltyCode,
-      petName: 'Buddy',
       petCoins: 0,
-      petGrowth: 0,
-      petOutfit: [],
+      unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID],
+      activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID,
       allNighterCount: 0,
     });
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string) => {
+    const email = await resolveLoginEmail(identifier);
     await signInWithEmailAndPassword(auth, email, password);
   };
 

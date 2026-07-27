@@ -20,5 +20,18 @@ service firebase.storage {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Check-in photos (original + buddy-composited) from the Coffee Buddy
+    // photo editor.
+    match /sessionPhotos/{uid}/{sessionId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Buddy adventure photos posted from the Coffee Friends tab.
+    match /buddyPosts/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }

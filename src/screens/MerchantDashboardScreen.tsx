@@ -23,6 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, RewardAccount } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
+import { SHOW_ANNOUNCEMENTS } from '../constants';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -224,12 +225,14 @@ export default function MerchantDashboardScreen({ navigation }: any) {
       </View>
 
       <View style={styles.linkRow}>
-        <Pressable
-          style={styles.linkButton}
-          onPress={() => navigation.navigate('ManageAnnouncements')}
-        >
-          <Text style={styles.linkButtonText}>📢 Announcements</Text>
-        </Pressable>
+        {SHOW_ANNOUNCEMENTS && (
+          <Pressable
+            style={styles.linkButton}
+            onPress={() => navigation.navigate('ManageAnnouncements')}
+          >
+            <Text style={styles.linkButtonText}>📢 Announcements</Text>
+          </Pressable>
+        )}
         <Pressable style={styles.linkButton} onPress={() => navigation.navigate('ManageMenu')}>
           <Text style={styles.linkButtonText}>📋 Menu</Text>
         </Pressable>

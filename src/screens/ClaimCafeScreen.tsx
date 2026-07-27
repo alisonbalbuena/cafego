@@ -18,6 +18,7 @@ import { showAlert } from '../utils/alert';
 import { VERIFICATION_CONTACT } from '../constants';
 import { COLORS } from '../theme';
 import SearchBar from '../components/SearchBar';
+import BackButton from '../components/BackButton';
 
 export default function ClaimCafeScreen({ navigation }: any) {
   const { user, profile } = useAuth();
@@ -91,7 +92,10 @@ export default function ClaimCafeScreen({ navigation }: any) {
   if (profile?.pendingCafeId) {
     return (
       <View style={styles.container}>
-        <Text style={styles.heading}>Verification pending</Text>
+        <View style={styles.headingRow}>
+          <BackButton navigation={navigation} />
+          <Text style={styles.heading}>Verification pending</Text>
+        </View>
         <Text style={styles.pendingText}>
           Your claim is awaiting verification. Contact {VERIFICATION_CONTACT} to confirm you own
           this cafe — your rewards program will go live once approved.
@@ -103,7 +107,10 @@ export default function ClaimCafeScreen({ navigation }: any) {
   if (!selectedCafe) {
     return (
       <View style={styles.container}>
-        <Text style={styles.heading}>Which cafe do you own?</Text>
+        <View style={styles.headingRow}>
+          <BackButton navigation={navigation} />
+          <Text style={styles.heading}>Which cafe do you own?</Text>
+        </View>
         <SearchBar
           style={{ marginBottom: 8 }}
           placeholder="Search cafes (e.g. Duluth, Alchemist)"
@@ -132,7 +139,10 @@ export default function ClaimCafeScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.heading}>Set up your program</Text>
+      <View style={styles.headingRow}>
+        <BackButton navigation={navigation} />
+        <Text style={styles.heading}>Set up your program</Text>
+      </View>
       <Pressable style={styles.selectedPill} onPress={() => setSelectedCafe(null)}>
         <Text style={styles.selectedPillText}>{selectedCafe.name} ✕</Text>
       </Pressable>
@@ -213,7 +223,8 @@ export default function ClaimCafeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 6 },
   input: {
     borderWidth: 1,

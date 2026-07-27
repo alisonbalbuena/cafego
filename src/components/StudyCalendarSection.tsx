@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
 import { COLORS, RADIUS } from '../theme';
 import { computeWeekStreak } from '../utils/dateHelpers';
+import { UI_ICONS } from '../data/uiIcons';
 import StudyCalendar from './StudyCalendar';
 
 export default function StudyCalendarSection() {
@@ -26,7 +27,7 @@ export default function StudyCalendarSection() {
   return (
     <View>
       <View style={styles.streakRow}>
-        <Text style={styles.streakEmoji}>🔥</Text>
+        <Image source={UI_ICONS.streak} style={styles.streakIcon} resizeMode="contain" />
         <Text style={styles.streakText}>
           {streak > 0
             ? `${streak} week streak — keep it going!`
@@ -52,7 +53,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 12,
   },
-  streakEmoji: { fontSize: 18 },
+  streakIcon: { width: 22, height: 22 },
   streakText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, flex: 1 },
   card: {
     backgroundColor: COLORS.surface,

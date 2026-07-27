@@ -30,8 +30,9 @@ import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, MenuItem } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
+import BackButton from '../components/BackButton';
 
-export default function ManageMenuScreen() {
+export default function ManageMenuScreen({ navigation }: any) {
   const { profile } = useAuth();
   const [program, setProgram] = useState<CafeProgram | null>(null);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -164,7 +165,10 @@ export default function ManageMenuScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View>
-            <Text style={styles.heading}>Menu</Text>
+            <View style={styles.headingRow}>
+              <BackButton navigation={navigation} />
+              <Text style={styles.heading}>Menu</Text>
+            </View>
 
             <Text style={styles.sectionTitle}>Menu photos</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
@@ -242,7 +246,8 @@ export default function ManageMenuScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 8 },
   input: {
     borderWidth: 1,

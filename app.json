@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.focusbrew.cafestudyapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -22,7 +23,30 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Study Cafe would like to add accepted study session invites to your calendar."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Study Cafe would like to save your Coffee Buddy adventure photos.",
+          "savePhotosPermission": "Study Cafe would like to save your Coffee Buddy adventure photos.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ]
     ]
   }
 }

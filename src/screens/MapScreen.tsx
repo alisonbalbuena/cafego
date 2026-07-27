@@ -5,11 +5,14 @@ import * as Location from 'expo-location';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
-import { CAFES } from '../data/cafes';
-import { busynessMeta, intensityMeta, isSessionPublic, StudySession } from '../types';
+import { CAFES, HOME_LOCATION } from '../data/cafes';
+import { busynessMeta, Cafe, intensityMeta, isSessionPublic, StudySession } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS } from '../theme';
 import { distanceMiles } from '../utils/geo';
+import { isGooglePlacesConfigured, searchNearbyCafes } from '../utils/googlePlaces';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BackButton from '../components/BackButton';
 
 interface Friend {
   uid: string;
@@ -26,6 +29,7 @@ const SCOPE_META: Record<MapScope, { color: string; label: string }> = {
 
 export default function MapScreen({ navigation }: any) {
   const { user, profile } = useAuth();
+  const insets = useSafeAreaInsets();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -33,20 +37,41 @@ export default function MapScreen({ navigation }: any) {
   const [communitySessions, setCommunitySessions] = useState<StudySession[]>([]);
   const [everyoneSessions, setEveryoneSessions] = useState<StudySession[]>([]);
   const [visitedCafeIds, setVisitedCafeIds] = useState<Set<string>>(new Set());
+  const [liveNearbyCafes, setLiveNearbyCafes] = useState<Cafe[] | null>(null);
 
   useEffect(() => {
     (async () => {
+      console.log('[MapScreen] requesting location permission…');
       const permission = await Location.requestForegroundPermissionsAsync();
+      console.log('[MapScreen] permission result:', permission.status, 'granted:', permission.granted);
       if (!permission.granted) {
         showAlert('Permission needed', 'Allow location access to see nearby cafes on the map.');
         setLoading(false);
         return;
       }
-      const position = await Location.getCurrentPositionAsync({});
-      setLocation(position);
+      try {
+        const position = await Location.getCurrentPositionAsync({});
+        console.log('[MapScreen] got position:', position.coords.latitude, position.coords.longitude);
+        setLocation(position);
+      } catch (err) {
+        console.log('[MapScreen] getCurrentPositionAsync threw:', err);
+      }
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!location) return;
+    if (!isGooglePlacesConfigured()) {
+      console.log('[MapScreen] Google Places not configured — using static cafe list.');
+      return;
+    }
+    console.log('[MapScreen] fetching live nearby cafes at', location.coords.latitude, location.coords.longitude);
+    searchNearbyCafes(location.coords.latitude, location.coords.longitude).then((cafes) => {
+      console.log(`[MapScreen] live nearby cafes fetched: ${cafes.length}`, cafes.map((c) => c.name));
+      if (cafes.length > 0) setLiveNearbyCafes(cafes);
+    });
+  }, [location]);
 
   useEffect(() => {
     if (!user) return;
@@ -144,17 +169,21 @@ export default function MapScreen({ navigation }: any) {
   }, [visibleSessions]);
 
   const nearestCafes = useMemo(() => {
-    if (!location) return CAFES;
+    const base = liveNearbyCafes ?? CAFES;
+    if (!location) return base;
     const { latitude, longitude } = location.coords;
-    return [...CAFES]
+    return [...base]
       .map((c) => ({ ...c, distance: distanceMiles(latitude, longitude, c.lat, c.lng) }))
       .sort((a, b) => a.distance - b.distance);
-  }, [location]);
+  }, [location, liveNearbyCafes]);
 
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" />
+        <View style={[styles.backButtonWrap, { top: insets.top + 8 }]}>
+          <BackButton navigation={navigation} />
+        </View>
       </View>
     );
   }
@@ -175,6 +204,9 @@ export default function MapScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.backButtonWrap, { top: insets.top + 8 }]}>
+        <BackButton navigation={navigation} />
+      </View>
       <MapView style={styles.map} initialRegion={initialRegion} showsUserLocation>
         {nearestCafes.map((cafe) => {
           const visited = visitedCafeIds.has(cafe.id);
@@ -212,13 +244,16 @@ export default function MapScreen({ navigation }: any) {
         })}
 
         {visibleSessions.map(({ session, scope }) => {
-          const cafe = CAFES.find((c) => c.id === session.cafeId);
-          if (!cafe) return null;
+          if (session.cafeId === HOME_LOCATION.id) return null;
+          const fallbackCafe = CAFES.find((c) => c.id === session.cafeId);
+          const lat = session.cafeLat ?? fallbackCafe?.lat;
+          const lng = session.cafeLng ?? fallbackCafe?.lng;
+          if (lat == null || lng == null) return null;
           const busyMeta = busynessMeta(session.busynessReport);
           return (
             <Marker
               key={session.id}
-              coordinate={{ latitude: cafe.lat, longitude: cafe.lng }}
+              coordinate={{ latitude: lat, longitude: lng }}
               pinColor={SCOPE_META[scope].color}
             >
               <Callout>
@@ -250,6 +285,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  backButtonWrap: { position: 'absolute', left: 16, zIndex: 10 },
   calloutTitle: { fontWeight: '700', fontSize: 14 },
   calloutSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   calloutIntensity: { fontSize: 11, fontWeight: '600', color: COLORS.primary, marginTop: 4 },

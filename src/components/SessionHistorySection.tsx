@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, TextInput, Pressable, Modal, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { getSessionSubjectSegments, StudySession } from '../types';
 import { formatDuration, formatMoney } from '../utils/format';
 import { showAlert, showConfirm } from '../utils/alert';
+import { UI_ICONS } from '../data/uiIcons';
+import DismissKeyboardView from './DismissKeyboardView';
 import { COLORS } from '../theme';
 
 const PREVIEW_COUNT = 3;
@@ -18,6 +20,8 @@ export default function SessionHistorySection({ sessions }: Props) {
   const [showArchived, setShowArchived] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [showAllModal, setShowAllModal] = useState(false);
+  const [editingSpendId, setEditingSpendId] = useState<string | null>(null);
+  const [spendDraft, setSpendDraft] = useState('');
 
   const sorted = useMemo(
     () => [...sessions].sort((a, b) => b.startedAt - a.startedAt),
@@ -60,10 +64,30 @@ export default function SessionHistorySection({ sessions }: Props) {
     }
   };
 
+  const startEditSpend = (session: StudySession) => {
+    setSpendDraft(session.amountSpent ? String(session.amountSpent) : '');
+    setEditingSpendId(session.id);
+  };
+
+  const saveEditSpend = async (session: StudySession) => {
+    const amount = Math.max(0, Number(spendDraft) || 0);
+    setEditingSpendId(null);
+    if (amount === (session.amountSpent ?? 0)) return;
+    setBusyId(session.id);
+    try {
+      await updateDoc(doc(db, 'studySessions', session.id), { amountSpent: amount });
+    } catch (err: any) {
+      showAlert('Could not update spend', err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const renderRow = (s: StudySession) => {
     const subjects = Array.from(new Set(getSessionSubjectSegments(s).map((seg) => seg.subject)));
     const durationMs = s.endedAt != null ? s.endedAt - s.startedAt : null;
     const busy = busyId === s.id;
+    const editingSpend = editingSpendId === s.id;
     return (
       <View key={s.id} style={styles.row}>
         <View style={{ flex: 1 }}>
@@ -74,10 +98,27 @@ export default function SessionHistorySection({ sessions }: Props) {
           <Text style={styles.meta}>
             {subjects.join(', ')} · {new Date(s.startedAt).toLocaleDateString()}
           </Text>
-          <Text style={styles.meta}>
-            {durationMs != null ? formatDuration(durationMs) : 'In progress'}
-            {s.amountSpent ? ` · ${formatMoney(s.amountSpent)}` : ''}
-          </Text>
+          <View style={styles.spendRow}>
+            <Text style={styles.meta}>
+              {durationMs != null ? formatDuration(durationMs) : 'In progress'}
+              {editingSpend ? '' : ` · ${formatMoney(s.amountSpent ?? 0)}`}
+            </Text>
+            {editingSpend ? (
+              <TextInput
+                style={styles.spendInput}
+                value={spendDraft}
+                onChangeText={setSpendDraft}
+                keyboardType="decimal-pad"
+                autoFocus
+                onSubmitEditing={() => saveEditSpend(s)}
+                onBlur={() => saveEditSpend(s)}
+              />
+            ) : (
+              <Pressable onPress={() => startEditSpend(s)} hitSlop={8}>
+                <Ionicons name="pencil-outline" size={13} color={COLORS.textMuted} />
+              </Pressable>
+            )}
+          </View>
         </View>
         <View style={styles.actions}>
           <Pressable
@@ -108,7 +149,10 @@ export default function SessionHistorySection({ sessions }: Props) {
   return (
     <View>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>🗓️ Session history</Text>
+        <View style={styles.titleRow}>
+          <Image source={UI_ICONS.sessionHistory} style={styles.titleIcon} resizeMode="contain" />
+          <Text style={styles.sectionTitle}>Session history</Text>
+        </View>
         {archivedCount > 0 && (
           <Pressable onPress={() => setShowArchived((v) => !v)} hitSlop={8}>
             <Text style={styles.toggleText}>
@@ -138,32 +182,34 @@ export default function SessionHistorySection({ sessions }: Props) {
         animationType="slide"
         onRequestClose={() => setShowAllModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeaderRow}>
-            <Text style={styles.modalHeading}>Session history</Text>
-            <Pressable onPress={() => setShowAllModal(false)} hitSlop={10}>
-              <Ionicons name="close" size={24} color={COLORS.text} />
-            </Pressable>
-          </View>
+        <DismissKeyboardView>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalHeading}>Session history</Text>
+              <Pressable onPress={() => setShowAllModal(false)} hitSlop={10}>
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </Pressable>
+            </View>
 
-          {archivedCount > 0 && (
-            <Pressable onPress={() => setShowArchived((v) => !v)} style={{ marginBottom: 12 }}>
-              <Text style={styles.toggleText}>
-                {showArchived ? 'Show active sessions' : `Show archived (${archivedCount})`}
-              </Text>
-            </Pressable>
-          )}
-
-          <ScrollView>
-            {filtered.length === 0 ? (
-              <Text style={styles.emptyText}>
-                {showArchived ? 'No archived sessions.' : 'No study sessions yet.'}
-              </Text>
-            ) : (
-              filtered.map(renderRow)
+            {archivedCount > 0 && (
+              <Pressable onPress={() => setShowArchived((v) => !v)} style={{ marginBottom: 12 }}>
+                <Text style={styles.toggleText}>
+                  {showArchived ? 'Show active sessions' : `Show archived (${archivedCount})`}
+                </Text>
+              </Pressable>
             )}
-          </ScrollView>
-        </View>
+
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {filtered.length === 0 ? (
+                <Text style={styles.emptyText}>
+                  {showArchived ? 'No archived sessions.' : 'No study sessions yet.'}
+                </Text>
+              ) : (
+                filtered.map(renderRow)
+              )}
+            </ScrollView>
+          </View>
+        </DismissKeyboardView>
       </Modal>
     </View>
   );
@@ -176,6 +222,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  titleIcon: { width: 16, height: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   toggleText: { fontSize: 12, color: COLORS.link, fontWeight: '600' },
   emptyText: { color: COLORS.textFaint, marginBottom: 12 },
@@ -188,6 +236,15 @@ const styles = StyleSheet.create({
   },
   cafeName: { fontSize: 14, fontWeight: '600', color: COLORS.text },
   meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  spendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  spendInput: {
+    fontSize: 12,
+    color: COLORS.text,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingVertical: 0,
+    minWidth: 60,
+  },
   actions: { flexDirection: 'row', gap: 14, marginLeft: 10 },
   actionButton: { padding: 4 },
   seeAllButton: {

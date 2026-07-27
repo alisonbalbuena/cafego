@@ -5,9 +5,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
-import { LockProvider, useActiveLock } from '../hooks/useActiveLock';
-import LockOverlay from '../components/LockOverlay';
+import { useStreakReminder } from '../hooks/useStreakReminder';
+import { useStudyPlans } from '../hooks/useStudyPlans';
+import { useStudyInvites } from '../hooks/useStudyInvites';
+import { ActiveSessionProvider } from '../hooks/useActiveSession';
 import { COLORS } from '../theme';
+import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -17,6 +20,7 @@ import FriendsScreen from '../screens/FriendsScreen';
 import RewardsScreen from '../screens/RewardsScreen';
 import ClaimCafeScreen from '../screens/ClaimCafeScreen';
 import CafeProfileScreen from '../screens/CafeProfileScreen';
+import AddMenuPhotoScreen from '../screens/AddMenuPhotoScreen';
 import MerchantDashboardScreen from '../screens/MerchantDashboardScreen';
 import ManageAnnouncementsScreen from '../screens/ManageAnnouncementsScreen';
 import ManageMenuScreen from '../screens/ManageMenuScreen';
@@ -24,6 +28,11 @@ import AdminScreen from '../screens/AdminScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import PetScreen from '../screens/PetScreen';
+import StudyPlansScreen from '../screens/StudyPlansScreen';
+import CreateStudyPlanScreen from '../screens/CreateStudyPlanScreen';
+import StudyPlanDetailScreen from '../screens/StudyPlanDetailScreen';
+import StudyInvitesScreen from '../screens/StudyInvitesScreen';
+import CreateStudyInviteScreen from '../screens/CreateStudyInviteScreen';
 import SwipeableTabScreen from '../components/SwipeableTabScreen';
 import { ADMIN_EMAIL, SHOW_ADMIN_TAB, SHOW_LOYALTY_PROGRAM } from '../constants';
 
@@ -40,6 +49,8 @@ function withSwipe(Component: React.ComponentType<any>) {
 const AuthStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+const StudyStack = createNativeStackNavigator();
+const FriendsStack = createNativeStackNavigator();
 const RewardsStack = createNativeStackNavigator();
 const MyCafeStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
@@ -47,6 +58,7 @@ const ProfileStack = createNativeStackNavigator();
 function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
     </AuthStack.Navigator>
@@ -58,8 +70,32 @@ function HomeNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={withSwipe(HomeScreen)} />
       <HomeStack.Screen name="CafeProfile" component={CafeProfileScreen} />
+      <HomeStack.Screen name="AddMenuPhoto" component={AddMenuPhotoScreen} />
       <HomeStack.Screen name="Map" component={MapScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+function StudyNavigator() {
+  return (
+    <StudyStack.Navigator screenOptions={{ headerShown: false }}>
+      <StudyStack.Screen name="StudyMain" component={withSwipe(CheckInScreen)} />
+      <StudyStack.Screen name="CafeProfile" component={CafeProfileScreen} />
+      <StudyStack.Screen name="AddMenuPhoto" component={AddMenuPhotoScreen} />
+    </StudyStack.Navigator>
+  );
+}
+
+function FriendsNavigator() {
+  return (
+    <FriendsStack.Navigator screenOptions={{ headerShown: false }}>
+      <FriendsStack.Screen name="FriendsMain" component={withSwipe(FriendsScreen)} />
+      <FriendsStack.Screen name="StudyPlans" component={StudyPlansScreen} />
+      <FriendsStack.Screen name="CreateStudyPlan" component={CreateStudyPlanScreen} />
+      <FriendsStack.Screen name="StudyPlanDetail" component={StudyPlanDetailScreen} />
+      <FriendsStack.Screen name="StudyInvites" component={StudyInvitesScreen} />
+      <FriendsStack.Screen name="CreateStudyInvite" component={CreateStudyInviteScreen} />
+    </FriendsStack.Navigator>
   );
 }
 
@@ -97,20 +133,18 @@ const TAB_ICONS: Record<string, [keyof typeof Ionicons.glyphMap, keyof typeof Io
   Friends: ['people', 'people-outline'],
   Rewards: ['gift', 'gift-outline'],
   'My Cafe': ['cafe', 'cafe-outline'],
-  Buddy: ['game-controller', 'game-controller-outline'],
+  Coffee: ['happy', 'happy-outline'],
   Admin: ['shield-checkmark', 'shield-checkmark-outline'],
   Profile: ['person-circle', 'person-circle-outline'],
 };
 
 function MainNavigator() {
   const { user, profile } = useAuth();
-  const { isLocked } = useActiveLock();
+  useStreakReminder(profile);
+  useStudyPlans(user?.uid);
+  useStudyInvites(user?.uid);
   const isMerchant = profile?.role === 'merchant' && !!profile.merchantCafeId;
   const isAdmin = user?.email === ADMIN_EMAIL;
-
-  if (isLocked) {
-    return <LockOverlay />;
-  }
 
   return (
     <MainTabs.Navigator
@@ -133,13 +167,13 @@ function MainNavigator() {
       })}
     >
       <MainTabs.Screen name="Home" component={HomeNavigator} />
-      <MainTabs.Screen name="Study" component={withSwipe(CheckInScreen)} />
-      <MainTabs.Screen name="Friends" component={withSwipe(FriendsScreen)} />
+      <MainTabs.Screen name="Study" component={StudyNavigator} />
+      <MainTabs.Screen name="Friends" component={FriendsNavigator} />
       {SHOW_LOYALTY_PROGRAM && <MainTabs.Screen name="Rewards" component={RewardsNavigator} />}
       {SHOW_LOYALTY_PROGRAM && isMerchant && (
         <MainTabs.Screen name="My Cafe" component={MyCafeNavigator} />
       )}
-      <MainTabs.Screen name="Buddy" component={withSwipe(PetScreen)} />
+      <MainTabs.Screen name="Coffee" component={withSwipe(PetScreen)} />
       {SHOW_ADMIN_TAB && isAdmin && (
         <MainTabs.Screen name="Admin" component={withSwipe(AdminScreen)} />
       )}
@@ -162,9 +196,9 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       {user ? (
-        <LockProvider>
+        <ActiveSessionProvider>
           <MainNavigator />
-        </LockProvider>
+        </ActiveSessionProvider>
       ) : (
         <AuthNavigator />
       )}
