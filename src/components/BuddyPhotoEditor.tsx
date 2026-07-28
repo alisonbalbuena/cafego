@@ -13,7 +13,7 @@ import { captureRef } from 'react-native-view-shot';
 import { CoffeeFriend } from '../data/coffeeFriends';
 import { BUDDY_POSES, getBuddyPose } from '../data/buddyPoses';
 import CoffeeBuddySprite from './CoffeeBuddySprite';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 
 export interface BuddyPhotoResult {
   originalUri: string;
@@ -230,8 +230,8 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     width: '100%',
   },
-  title: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  hint: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, marginBottom: 12 },
+  title: { fontSize: 18, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.bold, letterSpacing: 0.7 },
+  hint: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   canvas: {
     borderRadius: RADIUS.md,
     overflow: 'hidden',
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: COLORS.surface,
   },
-  controlChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  controlChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 14, alignSelf: 'stretch' },
   cancelButton: {
     flex: 1,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     padding: 13,
     alignItems: 'center',
   },
-  cancelButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
+  cancelButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   saveButton: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -264,5 +264,5 @@ const styles = StyleSheet.create({
     padding: 13,
     alignItems: 'center',
   },
-  saveButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  saveButtonText: { color: '#fff', fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
 });

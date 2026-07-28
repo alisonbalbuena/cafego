@@ -25,7 +25,7 @@ import {
   presentActivityPicker,
   requestAuthorization,
 } from 'screen-time';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 
 export default function EditProfileScreen({ navigation }: any) {
@@ -337,14 +337,22 @@ export default function EditProfileScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   avatarWrap: { alignItems: 'center', marginBottom: 20 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.card },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
-  avatarPlaceholderText: { fontSize: 28, color: COLORS.textFaint },
-  avatarHint: { fontSize: 13, color: COLORS.link, fontWeight: '600', marginTop: 8 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 6 },
+  avatarPlaceholderText: { fontSize: 28, color: COLORS.textFaint, fontFamily: FONTS.regular },
+  avatarHint: { fontSize: 13, color: COLORS.link, fontWeight: '600', marginTop: 8, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -362,13 +370,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   periodChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  periodChipText: { fontSize: 13, color: COLORS.text, fontWeight: '600' },
+  periodChipText: { fontSize: 13, color: COLORS.text, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   periodChipTextSelected: { color: '#fff' },
-  budgetHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 6, lineHeight: 17 },
+  budgetHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 6, lineHeight: 17, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 20 },
   switchTextWrap: { flex: 1 },
-  switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  switchHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, lineHeight: 16 },
+  switchLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  switchHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, lineHeight: 16, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -377,7 +385,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 13 },
+  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
@@ -386,5 +394,5 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 24,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
 });

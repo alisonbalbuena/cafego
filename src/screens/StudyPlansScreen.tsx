@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useStudyPlans } from '../hooks/useStudyPlans';
 import { isPlanOver, isPlanFlawless } from '../utils/studyPlans';
 import { dateKey } from '../utils/dateHelpers';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 import { UI_ICONS } from '../data/uiIcons';
 
@@ -102,7 +102,7 @@ export default function StudyPlansScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   headingIcon: { width: 26, height: 26 },
   newButton: {
@@ -112,9 +112,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  newButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textMuted, marginBottom: 8, marginTop: 8 },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  newButtonText: { color: '#fff', fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginBottom: 8,
+    marginTop: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   planCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -123,6 +131,6 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  planName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  planMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  planName: { fontSize: 15, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  planMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

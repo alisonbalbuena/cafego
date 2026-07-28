@@ -5,7 +5,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 
 const MAX_RESULTS = 15;
 
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -107,13 +107,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rowLast: { borderBottomWidth: 0 },
-  name: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  name: { fontSize: 14, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   tag: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
     paddingVertical: 3,
     paddingHorizontal: 10,
   },
-  tagText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
+  tagText: { fontSize: 11, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
 });

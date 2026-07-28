@@ -16,7 +16,7 @@ import { CAFES } from '../data/cafes';
 import { Cafe, LoyaltyProgramType } from '../types';
 import { showAlert } from '../utils/alert';
 import { VERIFICATION_CONTACT } from '../constants';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import BackButton from '../components/BackButton';
 
@@ -223,9 +223,17 @@ export default function ClaimCafeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 6 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -234,8 +242,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   cafeRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  cafeName: { fontSize: 15, fontWeight: '500' },
-  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted },
+  cafeName: { fontSize: 15, fontWeight: '500', fontFamily: FONTS.medium, letterSpacing: 0.4 },
+  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   selectedPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -244,7 +252,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  selectedPillText: { fontWeight: '600' },
+  selectedPillText: { fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   chipRow: { flexDirection: 'row', gap: 8 },
   chip: {
     borderWidth: 1,
@@ -254,7 +262,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 13, color: COLORS.text },
+  chipText: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   chipTextSelected: { color: '#fff' },
   button: {
     backgroundColor: COLORS.primary,
@@ -263,7 +271,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
-  pendingText: { fontSize: 15, color: COLORS.text, lineHeight: 22 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  pendingText: { fontSize: 15, color: COLORS.text, lineHeight: 22, fontFamily: FONTS.regular, letterSpacing: 0.4 },
 });

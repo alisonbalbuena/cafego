@@ -36,10 +36,17 @@ import { UI_ICONS } from '../data/uiIcons';
 import { COFFEE_FRIENDS, getCoffeeFriend } from '../data/coffeeFriends';
 import { randomBuddyPose } from '../data/buddyPoses';
 import BuddyPhotoEditor, { BuddyPhotoResult } from '../components/BuddyPhotoEditor';
+import PixelBean from '../components/PixelBean';
 import { getLocationAdventureMessage } from '../utils/buddyJourney';
 import { postBuddyAdventure } from '../utils/buddyPosts';
 import { logStudySessionToCalendar } from '../utils/calendarSync';
 import { applyShield, removeShield } from 'screen-time';
+import {
+  endStudyTimerActivity,
+  startStudyTimerActivity,
+  updateStudyTimerActivity,
+} from 'study-timer-activity';
+import { getPhaseLabel, getPhaseRemainingMs } from '../utils/studyMethodTimer';
 import {
   BusynessLevel,
   BUSYNESS_LEVELS,
@@ -59,7 +66,7 @@ import {
   visibilityMeta,
 } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import { distanceMiles } from '../utils/geo';
 import { isAllNighter } from '../utils/allNighter';
 import { monthKey, startOfMonth, startOfWeek } from '../utils/dateHelpers';
@@ -456,6 +463,15 @@ export default function CheckInScreen({ navigation, route }: any) {
       if (profile?.screenTimeShieldEnabled) {
         applyShield().catch(() => {});
       }
+      if (payload.studyMethod) {
+        startStudyTimerActivity(selectedCafe.name, {
+          subject,
+          phaseLabel: getPhaseLabel('work'),
+          phaseEndDate: startedAt + payload.methodWorkMin * 60000,
+          remainingSeconds: payload.methodWorkMin * 60,
+          paused: false,
+        }).catch(() => {});
+      }
       if (buddyPhotoResult) {
         uploadCheckInPhoto(sessionRef.id, selectedCafe.name, buddyPhotoResult).catch(() => {});
       }
@@ -513,6 +529,15 @@ export default function CheckInScreen({ navigation, route }: any) {
       if (profile?.screenTimeShieldEnabled) {
         removeShield().catch(() => {});
       }
+      if (activeSession.studyMethod && activeSession.studyMethod !== 'none') {
+        updateStudyTimerActivity({
+          subject: activeSession.subject,
+          phaseLabel: getPhaseLabel(activeSession.methodPhase ?? 'work'),
+          phaseEndDate: Date.now(),
+          remainingSeconds: Math.round(getPhaseRemainingMs(activeSession, Date.now()) / 1000),
+          paused: true,
+        }).catch(() => {});
+      }
     } catch (err: any) {
       showAlert('Could not pause session', err.message);
     }
@@ -527,8 +552,19 @@ export default function CheckInScreen({ navigation, route }: any) {
         pausedAt: null,
         pausedMs: (activeSession.pausedMs ?? 0) + additionalPauseMs,
       });
-      if (profile?.screenTimeShieldEnabled) {
+      const phase = activeSession.methodPhase ?? 'work';
+      if (profile?.screenTimeShieldEnabled && phase === 'work') {
         applyShield().catch(() => {});
+      }
+      if (activeSession.studyMethod && activeSession.studyMethod !== 'none') {
+        const remainingMs = getPhaseRemainingMs(activeSession, Date.now());
+        updateStudyTimerActivity({
+          subject: activeSession.subject,
+          phaseLabel: getPhaseLabel(phase),
+          phaseEndDate: Date.now() + remainingMs,
+          remainingSeconds: Math.round(remainingMs / 1000),
+          paused: false,
+        }).catch(() => {});
       }
     } catch (err: any) {
       showAlert('Could not resume session', err.message);
@@ -588,6 +624,9 @@ export default function CheckInScreen({ navigation, route }: any) {
     }
     if (profile?.screenTimeShieldEnabled) {
       removeShield().catch(() => {});
+    }
+    if (session.studyMethod && session.studyMethod !== 'none') {
+      endStudyTimerActivity().catch(() => {});
     }
     return earnedAllNighter;
   };
@@ -722,6 +761,15 @@ export default function CheckInScreen({ navigation, route }: any) {
         payload.methodRound = 1;
       }
       await addDoc(collection(db, 'studySessions'), payload);
+      if (payload.studyMethod) {
+        startStudyTimerActivity(activeSession.cafeName, {
+          subject: activeSession.subject,
+          phaseLabel: getPhaseLabel('work'),
+          phaseEndDate: startedAt + payload.methodWorkMin * 60000,
+          remainingSeconds: payload.methodWorkMin * 60,
+          paused: false,
+        }).catch(() => {});
+      }
       if (earnedAllNighter) {
         showAlert('🌙 All-nighter!', "You studied through the night — that's dedication.");
       }
@@ -769,14 +817,24 @@ export default function CheckInScreen({ navigation, route }: any) {
             </Text>
           </View>
           {activeSession.studyMode === 'group' && !!activeSession.withFriends?.length && (
-            <Text style={styles.activeWithFriends}>
-              👥 With {activeSession.withFriends.map((f) => f.displayName).join(', ')}
-            </Text>
+            <View style={styles.activeWithFriendsRow}>
+              <View style={styles.withFriendsBeans}>
+                {activeSession.withFriends.map((f) => (
+                  <PixelBean key={f.uid} color={COLORS.accent} size={13} />
+                ))}
+              </View>
+              <Text style={styles.activeWithFriends}>
+                With {activeSession.withFriends.map((f) => f.displayName).join(', ')}
+              </Text>
+            </View>
           )}
           <Text style={styles.activeVisibility}>
             {visibilityMeta(activeSession.visibility).emoji} {visibilityMeta(activeSession.visibility).label}
           </Text>
-          <StudyMethodTimer session={activeSession} />
+          <StudyMethodTimer
+            session={activeSession}
+            screenTimeShieldEnabled={profile?.screenTimeShieldEnabled}
+          />
         </View>
 
         {!!activeSession.syncPartnerUid && (
@@ -821,13 +879,14 @@ export default function CheckInScreen({ navigation, route }: any) {
                   style={[styles.chip, activeSession.busynessReport === b.value && styles.chipSelected]}
                   onPress={() => reportBusyness(b.value)}
                 >
+                  <PixelBean color={b.color} size={16} />
                   <Text
                     style={[
                       styles.chipText,
                       activeSession.busynessReport === b.value && styles.chipTextSelected,
                     ]}
                   >
-                    {b.emoji} {b.label}
+                    {b.label}
                   </Text>
                 </Pressable>
               ))}
@@ -841,9 +900,12 @@ export default function CheckInScreen({ navigation, route }: any) {
             {friendsAtCafe.map((s) => {
               const report = busynessMeta(s.busynessReport);
               return (
-                <Text key={s.id} style={styles.friendReportText}>
-                  {s.displayName}: {report ? `${report.emoji} ${report.label}` : "hasn't reported yet"}
-                </Text>
+                <View key={s.id} style={styles.friendReportRow}>
+                  {report && <PixelBean color={report.color} size={13} />}
+                  <Text style={styles.friendReportText}>
+                    {s.displayName}: {report ? report.label : "hasn't reported yet"}
+                  </Text>
+                </View>
               );
             })}
           </View>
@@ -1296,12 +1358,34 @@ export default function CheckInScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 8, marginBottom: 6 },
-  recommendedLabel: { fontSize: 12, fontWeight: '600', color: COLORS.accent, marginBottom: 6 },
-  hint: { fontSize: 12, color: COLORS.textMuted, marginBottom: 12, lineHeight: 17 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16, fontFamily: FONTS.bold, letterSpacing: 1.0 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 8,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
+  recommendedLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.accent,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
+  hint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginBottom: 12,
+    lineHeight: 17,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   syncToggle: { marginBottom: 8 },
-  syncToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  syncToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1312,15 +1396,22 @@ const styles = StyleSheet.create({
   },
   customMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   customMethodField: { width: '47%' },
-  customMethodLabel: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted, marginBottom: 4 },
+  customMethodLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginBottom: 4,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.2,
+  },
   cafeList: { marginBottom: 8 },
   cafeRow: {
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  cafeName: { fontSize: 15, fontWeight: '500' },
-  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted },
+  cafeName: { fontSize: 15, fontWeight: '500', fontFamily: FONTS.medium, letterSpacing: 0.4 },
+  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   selectedPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -1329,7 +1420,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  selectedPillText: { fontWeight: '600' },
+  selectedPillText: { fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   subjectSwitchRow: { flexDirection: 'row', gap: 8, marginBottom: 16, alignItems: 'center' },
   subjectSwitchButton: {
@@ -1338,8 +1429,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  subjectSwitchButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  subjectSwitchButtonText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 20,
@@ -1347,11 +1441,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 13, color: COLORS.text },
+  chipText: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   chipTextSelected: { color: '#fff' },
   methodChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   methodChipIcon: { width: 20, height: 20 },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
@@ -1367,7 +1461,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 16,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   activeCard: {
     backgroundColor: COLORS.card,
     borderRadius: 12,
@@ -1375,9 +1469,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     alignItems: 'center',
   },
-  activeCafe: { fontSize: 18, fontWeight: '700', alignSelf: 'flex-start' },
-  activeSubject: { fontSize: 14, color: COLORS.textMuted, marginTop: 4, alignSelf: 'flex-start' },
-  friendReportText: { fontSize: 13, color: COLORS.textMuted, marginBottom: 4 },
+  activeCafe: { fontSize: 18, fontWeight: '700', alignSelf: 'flex-start', fontFamily: FONTS.semiBold, letterSpacing: 0.7 },
+  activeSubject: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+  },
+  friendReportRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  friendReportText: { fontSize: 13, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   pauseButton: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -1392,8 +1494,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 4,
   },
-  pauseButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  resumeButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.white },
+  pauseButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  resumeButtonText: { fontSize: 13, fontWeight: '700', color: COLORS.white, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   homeLocationButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1403,7 +1505,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 10,
   },
-  homeLocationButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  homeLocationButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   photoPickButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1416,7 +1518,7 @@ const styles = StyleSheet.create({
   },
   photoPickButtonRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   photoPickButtonIcon: { width: 18, height: 18 },
-  photoPickButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  photoPickButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   photoPreviewWrap: { marginBottom: 12 },
   photoPreview: { width: '100%', height: 200, borderRadius: 12, backgroundColor: '#000' },
   photoPreviewActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
@@ -1427,7 +1529,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  secondaryChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  secondaryChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   activeIntensityPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -1436,9 +1538,24 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 4,
   },
-  activeIntensityText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  activeWithFriends: { fontSize: 12, color: COLORS.textMuted, marginTop: 10, alignSelf: 'flex-start' },
-  activeVisibility: { fontSize: 12, color: COLORS.textFaint, marginTop: 8, alignSelf: 'flex-start' },
+  activeIntensityText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  activeWithFriendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  withFriendsBeans: { flexDirection: 'row', gap: 2 },
+  activeWithFriends: { fontSize: 12, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  activeVisibility: {
+    fontSize: 12,
+    color: COLORS.textFaint,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   lockCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -1447,23 +1564,43 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
-  lockCardTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 8 },
+  lockCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
   syncStatusCard: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
   },
-  syncStatusTitle: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
-  syncStatusMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
-  syncWaitingText: { fontSize: 12, color: COLORS.accent, fontWeight: '600', marginTop: 6 },
+  syncStatusTitle: { fontSize: 14, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  syncStatusMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  syncWaitingText: {
+    fontSize: 12,
+    color: COLORS.accent,
+    fontWeight: '600',
+    marginTop: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
   syncLeftBanner: {
     backgroundColor: COLORS.card,
     borderRadius: 12,
     padding: 14,
     marginBottom: 16,
   },
-  syncLeftBannerText: { fontSize: 13, color: COLORS.textMuted, fontStyle: 'italic' },
+  syncLeftBannerText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   exitReasonCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -1474,7 +1611,13 @@ const styles = StyleSheet.create({
   },
   exitReasonButtonRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   cancelExitButton: { paddingVertical: 14, paddingHorizontal: 8 },
-  cancelExitButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 14 },
+  cancelExitButtonText: {
+    color: COLORS.textMuted,
+    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   waitingIndicator: {
     backgroundColor: COLORS.textFaint,
     borderRadius: 10,

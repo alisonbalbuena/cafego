@@ -4,7 +4,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, where } from 'firebase/f
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { Nudge } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 
 export default function NudgeBanner() {
   const { user } = useAuth();
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 8,
   },
-  text: { fontSize: 13, color: COLORS.primary, flex: 1, marginRight: 8 },
-  name: { fontWeight: '700' },
-  dismiss: { fontSize: 14, color: COLORS.primary, fontWeight: '700' },
+  text: { fontSize: 13, color: COLORS.primary, flex: 1, marginRight: 8, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  name: { fontWeight: '700', fontFamily: FONTS.semiBold },
+  dismiss: { fontSize: 14, color: COLORS.primary, fontWeight: '700', fontFamily: FONTS.semiBold },
 });

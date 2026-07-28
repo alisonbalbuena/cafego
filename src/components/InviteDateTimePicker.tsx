@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, Pressable, Platform, StyleSheet } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 interface Props {
   value: Date;
@@ -47,5 +47,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
   },
-  dateText: { fontSize: 15, color: COLORS.text },
+  dateText: { fontSize: 15, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.4 },
 });

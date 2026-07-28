@@ -24,12 +24,14 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
     "react-native-maps": "1.20.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-view-shot": "4.0.3",
     "react-native-web": "^0.21.0",
-    "screen-time": "file:./modules/screen-time"
+    "screen-time": "file:./modules/screen-time",
+    "study-timer-activity": "file:./modules/study-timer-activity"
   },
   "devDependencies": {
     "@expo/ngrok": "^4.1.3",

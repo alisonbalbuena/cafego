@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 
 interface Props {
   onPress: () => void;
@@ -28,5 +28,5 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 6,
   },
-  text: { fontSize: 12, color: COLORS.textFaint },
+  text: { fontSize: 12, color: COLORS.textFaint, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

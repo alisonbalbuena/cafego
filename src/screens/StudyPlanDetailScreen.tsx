@@ -11,7 +11,7 @@ import {
   isPlanOver,
 } from '../utils/studyPlans';
 import { dateKey, parseDateKey } from '../utils/dateHelpers';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 
 export default function StudyPlanDetailScreen({ route, navigation }: any) {
@@ -142,27 +142,27 @@ export default function StudyPlanDetailScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  emptyText: { color: COLORS.textFaint },
+  emptyText: { color: COLORS.textFaint, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   infoCard: {
     backgroundColor: COLORS.card,
     borderRadius: RADIUS.lg,
     padding: 16,
     marginBottom: 12,
   },
-  infoSubject: { fontSize: 16, fontWeight: '700', color: COLORS.text },
-  infoMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  infoSubject: { fontSize: 16, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  infoMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   rewardCard: {
     backgroundColor: COLORS.accentLight,
     borderRadius: RADIUS.lg,
     padding: 14,
     marginBottom: 20,
   },
-  rewardText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10 },
+  rewardText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   memberRow: { marginBottom: 16 },
-  memberName: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 6 },
+  memberName: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginBottom: 6, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   dayRow: { flexDirection: 'row', gap: 6 },
   dayCell: {
     width: 32,
@@ -175,5 +175,5 @@ const styles = StyleSheet.create({
   dayCellMet: { backgroundColor: COLORS.accentLight },
   dayCellMissed: { backgroundColor: COLORS.borderLight },
   dayCellToday: { backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.primary },
-  dayCellText: { fontSize: 14 },
+  dayCellText: { fontSize: 14, fontFamily: FONTS.regular },
 });

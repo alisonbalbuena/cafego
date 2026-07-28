@@ -9,11 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
+import BackButton from '../components/BackButton';
 
 export default function LoginScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { signIn } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +42,9 @@ export default function LoginScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={[styles.backButtonWrap, { top: insets.top + 8 }]}>
+        <BackButton navigation={navigation} />
+      </View>
       <View style={styles.logoBubble}>
         <Ionicons name="cafe" size={32} color={COLORS.white} />
       </View>
@@ -82,6 +88,7 @@ export default function LoginScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: COLORS.bg },
+  backButtonWrap: { position: 'absolute', left: 16, zIndex: 10 },
   logoBubble: {
     width: 64,
     height: 64,
@@ -92,8 +99,22 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 16,
   },
-  title: { fontSize: 32, fontWeight: '700', textAlign: 'center', color: COLORS.text },
-  subtitle: { fontSize: 14, color: COLORS.textMuted, textAlign: 'center', marginBottom: 32 },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: COLORS.text,
+    fontFamily: FONTS.bold,
+    letterSpacing: 1.2,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginBottom: 32,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.5,
+  },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -113,6 +134,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: COLORS.white, fontWeight: '600', fontSize: 16 },
-  link: { color: COLORS.textMuted, textAlign: 'center', marginTop: 16 },
+  buttonText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
+  link: {
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 16,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+  },
 });

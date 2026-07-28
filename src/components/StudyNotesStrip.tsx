@@ -4,7 +4,7 @@ import { collection, deleteDoc, doc, onSnapshot, query, setDoc, where } from 'fi
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { NOTE_TTL_MS, StudyNote } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import { showAlert } from '../utils/alert';
 
 interface Friend {
@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   myAvatar: { backgroundColor: COLORS.accentLight },
-  avatarText: { fontSize: 15, fontWeight: '700', color: COLORS.primary },
-  cardName: { fontSize: 11, fontWeight: '700', color: COLORS.text },
-  cardNote: { fontSize: 10, color: COLORS.textMuted, marginTop: 2, textAlign: 'center' },
+  avatarText: { fontSize: 15, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold },
+  cardName: { fontSize: 11, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
+  cardNote: { fontSize: 10, color: COLORS.textMuted, marginTop: 2, textAlign: 'center', fontFamily: FONTS.regular, letterSpacing: 0.2 },
   composer: {
     marginTop: 10,
     backgroundColor: COLORS.surface,
@@ -185,12 +185,12 @@ const styles = StyleSheet.create({
   composerInput: { fontSize: 14, color: COLORS.text, paddingVertical: 6 },
   composerActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 6 },
   clearButton: { paddingVertical: 6, paddingHorizontal: 12 },
-  clearButtonText: { fontSize: 13, color: COLORS.danger, fontWeight: '600' },
+  clearButtonText: { fontSize: 13, color: COLORS.danger, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   postButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  postButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 13 },
+  postButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

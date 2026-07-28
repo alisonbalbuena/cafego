@@ -4,7 +4,7 @@ import { addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import BackButton from '../components/BackButton';
 import InviteDateTimePicker from '../components/InviteDateTimePicker';
@@ -144,10 +144,26 @@ export default function CreateStudyInviteScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 6 },
-  hint: { fontSize: 12, color: COLORS.textMuted, marginTop: 12, marginBottom: 12, lineHeight: 17 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
+  hint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 12,
+    lineHeight: 17,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -163,7 +179,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  chipText: { fontSize: 13, color: COLORS.text },
+  chipText: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   selectedPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -172,7 +188,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 8,
   },
-  selectedPillText: { fontWeight: '600', color: COLORS.text },
+  selectedPillText: { fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
@@ -181,5 +197,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 24,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
 });

@@ -63,6 +63,17 @@ export function getNextPhaseUpdate(session: StudySession, now: number): Record<s
   return { methodPhase: 'work', methodRound: round + 1, methodPhaseStartedAt: now };
 }
 
+const PHASE_LABELS: Record<string, string> = {
+  work: 'Focus',
+  break: 'Break',
+  longBreak: 'Long break',
+  done: 'Done',
+};
+
+export function getPhaseLabel(phase: string): string {
+  return PHASE_LABELS[phase] ?? 'Focus';
+}
+
 export function formatCountdown(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);

@@ -43,7 +43,7 @@ import {
   getUnlockedAccessories,
 } from '../utils/buddyJourney';
 import { StudySession } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 
 const COIN_ICON = require('../../assets/bean-coin.png');
 
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  heading: { fontSize: 22, fontWeight: '700' },
+  heading: { fontSize: 22, fontWeight: '700', fontFamily: FONTS.bold, letterSpacing: 1.0 },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   coinIcon: { width: 20, height: 20 },
-  coinBadgeText: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  coinBadgeText: { fontSize: 14, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   previewCard: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,
@@ -629,8 +629,8 @@ const styles = StyleSheet.create({
   previewImageWrap: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
   previewImage: { width: 220, height: 220 },
   expressionPreviewImage: { width: 56, height: 56 },
-  previewName: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 10 },
-  renameHint: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', marginTop: 2 },
+  previewName: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
+  renameHint: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   previewNameInput: {
     fontSize: 20,
     fontWeight: '700',
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     minWidth: 140,
     textAlign: 'center',
   },
-  coinHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, textAlign: 'center' },
+  coinHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, textAlign: 'center', fontFamily: FONTS.regular, letterSpacing: 0.3 },
   adventureButton: {
     backgroundColor: COLORS.accentLight,
     borderRadius: RADIUS.pill,
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   },
   adventureButtonRow: { flexDirection: 'row', justifyContent: 'center', gap: 8 },
   adventureButtonIcon: { width: 18, height: 18 },
-  adventureButtonText: { fontSize: 14, fontWeight: '700', color: COLORS.primary },
+  adventureButtonText: { fontSize: 14, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   streakCard: {
     backgroundColor: COLORS.accentLight,
     borderRadius: RADIUS.lg,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
   },
   streakValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   streakIcon: { width: 18, height: 18 },
-  streakValue: { fontSize: 13, fontWeight: '700', color: COLORS.primary, textAlign: 'center' },
+  streakValue: { fontSize: 13, fontWeight: '700', color: COLORS.primary, textAlign: 'center', fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   visibilityRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   visibilityChip: {
     borderWidth: 1,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   visibilityChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  visibilityChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  visibilityChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   visibilityChipTextSelected: { color: COLORS.white },
   methodChip: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   methodChipIcon: { width: 18, height: 18 },
@@ -691,6 +691,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
     marginBottom: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
   },
   accessoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   accessoryChip: {
@@ -705,14 +707,15 @@ const styles = StyleSheet.create({
   },
   accessoryChipLocked: { opacity: 0.6 },
   accessoryEmoji: { fontSize: 22 },
-  accessoryLabel: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4 },
+  accessoryLabel: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
   accessoryDescription: {
     fontSize: 9,
     color: COLORS.textMuted,
     marginTop: 2,
     textAlign: 'center',
+    fontFamily: FONTS.regular,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   filterChip: {
     borderWidth: 1,
@@ -723,7 +726,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
   },
   filterChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  filterChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   filterChipTextSelected: { color: COLORS.white },
   itemGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
   friendCard: {
@@ -737,7 +740,7 @@ const styles = StyleSheet.create({
   },
   friendImage: { width: 56, height: 56 },
   friendImageLocked: { opacity: 0.35 },
-  friendName: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4 },
+  friendName: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
   itemCard: {
     width: '30%',
     backgroundColor: COLORS.surface,
@@ -750,8 +753,8 @@ const styles = StyleSheet.create({
   itemCardDisabled: { opacity: 0.45 },
   itemCardSelected: { borderWidth: 2, borderColor: COLORS.primary },
   itemEmoji: { fontSize: 28 },
-  itemLabel: { fontSize: 12, fontWeight: '600', color: COLORS.text, marginTop: 4 },
-  itemCost: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  itemLabel: { fontSize: 12, fontWeight: '600', color: COLORS.text, marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  itemCost: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   adventureDetailsBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -764,8 +767,16 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 32,
   },
-  adventureDetailsTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text, marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 10, marginBottom: 6 },
+  adventureDetailsTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text, marginBottom: 12, fontFamily: FONTS.semiBold, letterSpacing: 0.7 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 10,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -784,7 +795,7 @@ const styles = StyleSheet.create({
     padding: 13,
     alignItems: 'center',
   },
-  adventureCancelButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15 },
+  adventureCancelButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   adventureShareButton: {
     flex: 1,
     backgroundColor: COLORS.primary,
@@ -792,5 +803,5 @@ const styles = StyleSheet.create({
     padding: 13,
     alignItems: 'center',
   },
-  adventureShareButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  adventureShareButtonText: { color: '#fff', fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
 });

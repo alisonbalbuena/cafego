@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 interface BarDatum {
   label: string;
@@ -44,8 +44,8 @@ export default function BarChart({
 const styles = StyleSheet.create({
   row: { alignItems: 'flex-end', paddingHorizontal: 4, gap: 16 },
   col: { alignItems: 'center', width: 36 },
-  value: { fontSize: 10, color: COLORS.textMuted, marginBottom: 4, height: 12 },
+  value: { fontSize: 10, color: COLORS.textMuted, marginBottom: 4, height: 12, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   barTrack: { width: 18, justifyContent: 'flex-end', alignItems: 'center' },
   bar: { width: 18, borderRadius: 6 },
-  label: { fontSize: 10, color: COLORS.textFaint, marginTop: 6 },
+  label: { fontSize: 10, color: COLORS.textFaint, marginTop: 6, fontFamily: FONTS.regular, letterSpacing: 0.2 },
 });

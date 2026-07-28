@@ -10,11 +10,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
+import BackButton from '../components/BackButton';
 
 export default function SignUpScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -47,6 +50,9 @@ export default function SignUpScreen({ navigation }: any) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <View style={[styles.backButtonWrap, { top: insets.top + 8 }]}>
+        <BackButton navigation={navigation} />
+      </View>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.logoBubble}>
           <Ionicons name="cafe" size={28} color={COLORS.white} />
@@ -125,6 +131,7 @@ export default function SignUpScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
+  backButtonWrap: { position: 'absolute', left: 16, zIndex: 10 },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 24 },
   logoBubble: {
     width: 56,
@@ -136,7 +143,15 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
-  title: { fontSize: 28, fontWeight: '700', textAlign: 'center', color: COLORS.text, marginBottom: 28 },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: COLORS.text,
+    marginBottom: 28,
+    fontFamily: FONTS.bold,
+    letterSpacing: 1.1,
+  },
   row: { flexDirection: 'row', gap: 12 },
   inputWrap: {
     flexDirection: 'row',
@@ -157,6 +172,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  buttonText: { color: COLORS.white, fontWeight: '600', fontSize: 16 },
-  link: { color: COLORS.textMuted, textAlign: 'center', marginTop: 16 },
+  buttonText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 16,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
+  link: {
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 16,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+  },
 });

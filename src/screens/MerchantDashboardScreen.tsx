@@ -22,7 +22,7 @@ import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, RewardAccount } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import { SHOW_ANNOUNCEMENTS } from '../constants';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -275,11 +275,11 @@ export default function MerchantDashboardScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   programCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 12 },
-  programType: { fontSize: 14, fontWeight: '600' },
-  rewardDescription: { fontSize: 13, color: COLORS.textMuted, marginTop: 4 },
-  expiryNote: { fontSize: 11, color: COLORS.textFaint, marginTop: 6 },
+  programType: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  rewardDescription: { fontSize: 13, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  expiryNote: { fontSize: 11, color: COLORS.textFaint, marginTop: 6, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   linkRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   linkButton: {
     flex: 1,
@@ -289,8 +289,16 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
   },
-  linkButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  label: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 8, marginBottom: 6 },
+  linkButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 8,
+    marginBottom: 6,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -305,7 +313,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   redeemButton: {
     borderWidth: 1,
     borderColor: COLORS.accent,
@@ -314,6 +322,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  redeemButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 15 },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
+  redeemButtonText: { color: COLORS.accent, fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

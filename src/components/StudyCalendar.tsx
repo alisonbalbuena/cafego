@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import { dateKey, parseDateKey } from '../utils/dateHelpers';
 import { formatDuration, formatMoney, formatTime } from '../utils/format';
 import { getSessionSubjectSegments, StudySession } from '../types';
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   navButton: { padding: 4 },
-  monthLabel: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  monthLabel: { fontSize: 15, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   weekRow: { flexDirection: 'row' },
   weekdayText: {
     flex: 1,
@@ -189,6 +189,7 @@ const styles = StyleSheet.create({
     color: COLORS.textFaint,
     fontWeight: '600',
     marginBottom: 4,
+    fontFamily: FONTS.semiBold,
   },
   dayCell: {
     flex: 1,
@@ -200,8 +201,8 @@ const styles = StyleSheet.create({
   },
   dayCellToday: { borderWidth: 1.5, borderColor: COLORS.primary },
   dayCellSelected: { backgroundColor: COLORS.accentLight },
-  dayNumber: { fontSize: 13, color: COLORS.text },
-  dayNumberToday: { fontWeight: '700', color: COLORS.primary },
+  dayNumber: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular },
+  dayNumberToday: { fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold },
   dot: {
     width: 5,
     height: 5,
@@ -217,18 +218,18 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 10,
   },
-  detailDate: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 6 },
+  detailDate: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 6, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   detailRow: { paddingVertical: 4 },
-  detailCafe: { fontSize: 13, fontWeight: '600', color: COLORS.text },
-  detailMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
+  detailCafe: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  detailMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 1, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   subjectSection: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
   },
-  subjectTitle: { fontSize: 12, fontWeight: '700', color: COLORS.text, marginBottom: 6 },
+  subjectTitle: { fontSize: 12, fontWeight: '700', color: COLORS.text, marginBottom: 6, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   subjectRow: { paddingVertical: 4 },
-  subjectName: { fontSize: 12, fontWeight: '600', color: COLORS.text },
-  subjectMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
+  subjectName: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  subjectMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 1, fontFamily: FONTS.regular, letterSpacing: 0.2 },
 });

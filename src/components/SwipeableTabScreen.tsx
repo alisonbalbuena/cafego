@@ -1,19 +1,22 @@
-import React, { useRef } from 'react';
-import { View, PanResponder, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 const SWIPE_DISTANCE_THRESHOLD = 60;
-const SWIPE_VELOCITY_THRESHOLD = 0.3;
-const DIRECTION_LOCK_RATIO = 1.5;
+const SWIPE_VELOCITY_THRESHOLD = 300;
 
 interface Props {
   children: React.ReactNode;
 }
 
 // Lets the user swipe left/right anywhere on a tab's root screen to move to the
-// adjacent tab. Uses the plain PanResponder API (no gesture-handler/reanimated
-// dependency) and only claims the gesture once movement is clearly horizontal,
-// so vertical scrolling inside the screen keeps working normally.
+// adjacent tab. Built on react-native-gesture-handler's native Pan gesture
+// rather than the JS-thread PanResponder API — activeOffsetX/failOffsetY let
+// the native recognizer release the gesture to the screen's ScrollView the
+// instant movement reads as vertical, instead of negotiating on the JS thread
+// (which is what made vertical scrolling feel sluggish under the old
+// PanResponder-based version).
 // Screens can sit directly on the tab bar (e.g. Study) or be nested one level
 // down inside a per-tab stack (e.g. Home -> HomeStack -> HomeMain), so walk up
 // until we find the actual tab navigator rather than assuming a fixed depth.
@@ -38,23 +41,20 @@ export default function SwipeableTabScreen({ children }: Props) {
     tabNav.navigate(state.routeNames[nextIndex]);
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        Math.abs(gesture.dx) > 20 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * DIRECTION_LOCK_RATIO,
-      onPanResponderRelease: (_, gesture) => {
-        const farEnough = Math.abs(gesture.dx) > SWIPE_DISTANCE_THRESHOLD;
-        const fastEnough = Math.abs(gesture.vx) > SWIPE_VELOCITY_THRESHOLD;
-        if (!farEnough && !fastEnough) return;
-        switchTab(gesture.dx < 0 ? 1 : -1);
-      },
-    })
-  ).current;
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .failOffsetY([-10, 10])
+    .onEnd((event) => {
+      const farEnough = Math.abs(event.translationX) > SWIPE_DISTANCE_THRESHOLD;
+      const fastEnough = Math.abs(event.velocityX) > SWIPE_VELOCITY_THRESHOLD;
+      if (!farEnough && !fastEnough) return;
+      switchTab(event.translationX < 0 ? 1 : -1);
+    });
 
   return (
-    <View style={styles.flex} {...panResponder.panHandlers}>
-      {children}
-    </View>
+    <GestureDetector gesture={panGesture}>
+      <View style={styles.flex}>{children}</View>
+    </GestureDetector>
   );
 }
 

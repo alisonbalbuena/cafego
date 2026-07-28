@@ -8,7 +8,7 @@ import { formatDuration, formatMoney } from '../utils/format';
 import { showAlert, showConfirm } from '../utils/alert';
 import { UI_ICONS } from '../data/uiIcons';
 import DismissKeyboardView from './DismissKeyboardView';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 const PREVIEW_COUNT = 3;
 
@@ -224,9 +224,9 @@ const styles = StyleSheet.create({
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   titleIcon: { width: 16, height: 16 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  toggleText: { fontSize: 12, color: COLORS.link, fontWeight: '600' },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  toggleText: { fontSize: 12, color: COLORS.link, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  cafeName: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  cafeName: { fontSize: 14, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   spendRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   spendInput: {
     fontSize: 12,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 12,
   },
-  seeAllText: { fontSize: 13, color: COLORS.link, fontWeight: '600' },
+  seeAllText: { fontSize: 13, color: COLORS.link, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   modalContainer: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   modalHeaderRow: {
     flexDirection: 'row',
@@ -262,5 +262,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  modalHeading: { fontSize: 22, fontWeight: '700', color: COLORS.text },
+  modalHeading: { fontSize: 22, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.bold, letterSpacing: 1.0 },
 });

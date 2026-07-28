@@ -15,7 +15,7 @@ import {
 import { db } from '../firebase/config';
 import { CafeProgram } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 interface OwnedProgram {
   program: CafeProgram;
@@ -174,8 +174,8 @@ export default function AdminScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16, fontFamily: FONTS.bold, letterSpacing: 1.0 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -183,10 +183,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  cafeName: { fontSize: 16, fontWeight: '600' },
-  statusTag: { fontSize: 12, color: COLORS.textFaint, fontWeight: '400' },
-  owner: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  programInfo: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  cafeName: { fontSize: 16, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  statusTag: { fontSize: 12, color: COLORS.textFaint, fontWeight: '400', fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  owner: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  programInfo: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   approveButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 8,
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginLeft: 12,
   },
-  approveButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  approveButtonText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   unclaimButton: {
     borderWidth: 1,
     borderColor: COLORS.danger,
@@ -203,5 +203,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginLeft: 12,
   },
-  unclaimButtonText: { color: COLORS.danger, fontWeight: '600', fontSize: 13 },
+  unclaimButtonText: { color: COLORS.danger, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

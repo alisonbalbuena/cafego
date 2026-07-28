@@ -7,7 +7,7 @@ import { useStudyInvites } from '../hooks/useStudyInvites';
 import { StudyInvite } from '../types';
 import { showAlert } from '../utils/alert';
 import { addStudyInviteToCalendar } from '../utils/calendarSync';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 import { UI_ICONS } from '../data/uiIcons';
 
@@ -141,7 +141,7 @@ export default function StudyInvitesScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   headingIcon: { width: 26, height: 26 },
   newButton: {
@@ -151,9 +151,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  newButtonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textMuted, marginBottom: 8, marginTop: 8 },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  newButtonText: { color: '#fff', fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textMuted,
+    marginBottom: 8,
+    marginTop: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   inviteCard: {
     backgroundColor: COLORS.surface,
     borderWidth: 1,
@@ -162,8 +170,8 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  inviteTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  inviteMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  inviteTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  inviteMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   inviteButtonRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   acceptButton: {
     backgroundColor: COLORS.primary,
@@ -171,7 +179,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  acceptButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  acceptButtonText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   declineButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -179,7 +187,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  declineButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13 },
+  declineButtonText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   calendarButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -189,5 +197,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 10,
   },
-  calendarButtonText: { color: COLORS.link, fontWeight: '600', fontSize: 13 },
+  calendarButtonText: { color: COLORS.link, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

@@ -25,7 +25,7 @@ import { useAuth } from '../hooks/useAuth';
 import { FriendRequest, intensityMeta, isSessionPublic, StudySession, UserProfile } from '../types';
 import { showAlert } from '../utils/alert';
 import { formatDuration } from '../utils/format';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import StudyNotesStrip from '../components/StudyNotesStrip';
 import { useRefresh } from '../hooks/useRefresh';
@@ -541,7 +541,7 @@ export default function FriendsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 16, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   searchResults: { marginBottom: 16 },
   searchRow: {
     flexDirection: 'row',
@@ -551,18 +551,18 @@ const styles = StyleSheet.create({
   },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.card },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
-  avatarPlaceholderText: { fontSize: 16, color: COLORS.textFaint, fontWeight: '700' },
-  searchUsername: { fontSize: 15, fontWeight: '600' },
-  searchRealName: { fontSize: 12, color: COLORS.textFaint, opacity: 0.8, marginTop: 1 },
+  avatarPlaceholderText: { fontSize: 16, color: COLORS.textFaint, fontWeight: '700', fontFamily: FONTS.semiBold },
+  searchUsername: { fontSize: 15, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  searchRealName: { fontSize: 12, color: COLORS.textFaint, opacity: 0.8, marginTop: 1, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   addButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  addButtonText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  addButtonText: { color: '#fff', fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8 },
+  sectionTitle: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginBottom: 8, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   notesHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   notesHeaderIcon: { width: 16, height: 16 },
   studyPlansButton: {
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
   },
   studyPlansButtonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   studyPlansButtonIcon: { width: 20, height: 20 },
-  studyPlansButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+  studyPlansButtonText: { fontSize: 14, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   availabilityToggle: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -585,22 +585,22 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: COLORS.accentLight,
   },
-  availabilityToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
-  availableBadge: { fontSize: 12, color: COLORS.success, fontWeight: '600', marginTop: 4 },
+  availabilityToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  availableBadge: { fontSize: 12, color: COLORS.success, fontWeight: '600', marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   requestRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
   },
-  requestText: { fontSize: 15 },
+  requestText: { fontSize: 15, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   acceptButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  acceptButtonText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  acceptButtonText: { color: '#fff', fontSize: 13, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   friendRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -609,10 +609,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  friendName: { fontSize: 16, fontWeight: '500' },
-  friendStatus: { fontSize: 13, color: COLORS.success, marginTop: 2 },
-  friendStatusIdle: { fontSize: 13, color: COLORS.textFaint, marginTop: 2 },
-  togetherText: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  friendName: { fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, letterSpacing: 0.4 },
+  friendStatus: { fontSize: 13, color: COLORS.success, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  friendStatusIdle: { fontSize: 13, color: COLORS.textFaint, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  togetherText: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   togetherRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   togetherIcon: { width: 14, height: 14 },
   friendActions: { alignItems: 'flex-end', gap: 6 },
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 12,
   },
-  nudgeButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.primary },
+  nudgeButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   intensityPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -632,14 +632,14 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 6,
   },
-  intensityPillText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
+  intensityPillText: { fontSize: 11, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
   liveDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: COLORS.success,
   },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 24, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 
   leaderboardSection: { marginTop: 24 },
   leaderboardHeaderRow: {
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   leaderboardIcon: { width: 26, height: 26 },
-  leaderboardHeading: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  leaderboardHeading: { fontSize: 20, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.bold, letterSpacing: 0.8 },
   boardCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   },
   boardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   boardTitleIcon: { width: 18, height: 18 },
-  boardTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
+  boardTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   leaderboardRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rankBadgeIcon: { width: 24, height: 24 },
-  rankBadgeText: { fontSize: 16, fontWeight: '700', color: COLORS.textMuted },
+  rankBadgeText: { fontSize: 16, fontWeight: '700', color: COLORS.textMuted, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   leaderboardAvatar: {
     width: 36,
     height: 36,
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leaderboardAvatarText: { fontSize: 15, fontWeight: '700', color: COLORS.primary },
-  leaderboardName: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text },
-  leaderboardValue: { fontSize: 15, color: COLORS.success, fontWeight: '700' },
+  leaderboardAvatarText: { fontSize: 15, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  leaderboardName: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  leaderboardValue: { fontSize: 15, color: COLORS.success, fontWeight: '700', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

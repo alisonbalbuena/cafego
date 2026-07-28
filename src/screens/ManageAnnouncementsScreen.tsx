@@ -23,7 +23,7 @@ import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
 import { CafeAnnouncement } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 
 export default function ManageAnnouncementsScreen({ navigation }: any) {
@@ -122,7 +122,7 @@ export default function ManageAnnouncementsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   input: {
     borderWidth: 1,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  message: { fontSize: 14 },
-  date: { fontSize: 11, color: COLORS.textFaint, marginTop: 4 },
-  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600', marginLeft: 12 },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12 },
+  message: { fontSize: 14, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  date: { fontSize: 11, color: COLORS.textFaint, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.2 },
+  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600', marginLeft: 12, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

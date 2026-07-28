@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import { formatDuration, formatMoney } from '../utils/format';
 import { DAY_MS, startOfMonth, startOfWeek, startOfYear } from '../utils/dateHelpers';
 import BarChart from './BarChart';
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight,
     padding: 14,
   },
-  chartTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 10 },
+  chartTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   periodToggle: {
     flexDirection: 'row',
     gap: 8,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   periodChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  periodChipText: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  periodChipText: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   periodChipTextSelected: { color: COLORS.white },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   statBox: {
@@ -140,6 +140,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  statValue: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  statValue: { fontSize: 18, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.7 },
+  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

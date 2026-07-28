@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
 import { DAY_MS, startOfWeek } from '../utils/dateHelpers';
 import { formatDuration } from '../utils/format';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import { UI_ICONS } from '../data/uiIcons';
 
 function sessionActiveMs(s: StudySession): number {
@@ -91,11 +91,11 @@ const styles = StyleSheet.create({
   },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   titleIcon: { width: 16, height: 16 },
-  title: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
-  summary: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 6 },
-  emptyText: { fontSize: 13, color: COLORS.textMuted, marginTop: 6 },
+  title: { fontSize: 13, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
+  summary: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 6, fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
+  emptyText: { fontSize: 13, color: COLORS.textMuted, marginTop: 6, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 },
-  metaText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  metaText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   streakMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   streakMetaIcon: { width: 14, height: 14 },
 });

@@ -7,7 +7,7 @@ import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CAFES } from '../data/cafes';
 import { CafeAnnouncement, Cafe, intensityMeta, isSessionPublic, StudySession } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import SearchBar from '../components/SearchBar';
 import StudyCalendarSection from '../components/StudyCalendarSection';
 import NudgeBanner from '../components/NudgeBanner';
@@ -277,6 +277,7 @@ export default function HomeScreen({ navigation }: any) {
         posts={buddyPosts}
         showAuthor
         currentUid={user?.uid}
+        currentDisplayName={user?.displayName ?? 'Someone'}
         emptyText="No buddy adventures yet — take yours out from the Coffee Friends tab or a check-in photo!"
       />
 
@@ -348,8 +349,22 @@ export default function HomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  greeting: { fontSize: 19, fontWeight: '700', color: COLORS.accent, marginBottom: 2 },
-  heading: { fontSize: 34, fontWeight: '700', color: COLORS.text, marginBottom: 20 },
+  greeting: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: COLORS.accent,
+    marginBottom: 2,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.7,
+  },
+  heading: {
+    fontSize: 34,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 20,
+    fontFamily: FONTS.bold,
+    letterSpacing: 1.2,
+  },
   mapButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -367,9 +382,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mapButtonText: { color: COLORS.white, fontWeight: '600', fontSize: 14, flex: 1 },
+  mapButtonText: {
+    color: COLORS.white,
+    fontWeight: '600',
+    fontSize: 14,
+    flex: 1,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
   sectionHeaderIcon: { width: 18, height: 18 },
-  buddyAdventureEmoji: { fontSize: 16 },
+  buddyAdventureEmoji: { fontSize: 16, fontFamily: FONTS.regular },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -377,7 +399,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 8,
   },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
@@ -385,7 +413,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight,
     paddingHorizontal: 14,
   },
-  emptyText: { color: COLORS.textFaint, paddingVertical: 14 },
+  emptyText: {
+    color: COLORS.textFaint,
+    paddingVertical: 14,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -394,8 +427,20 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.borderLight,
   },
   rowLast: { borderBottomWidth: 0 },
-  rowTitle: { fontSize: 14, fontWeight: '600', color: COLORS.text },
-  rowSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
+  rowSubtitle: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    marginTop: 2,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   intensityPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -404,7 +449,13 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 6,
   },
-  intensityPillText: { fontSize: 11, fontWeight: '600', color: COLORS.primary },
+  intensityPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: COLORS.primary,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.2,
+  },
   liveDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.success },
   announcementCard: {
     backgroundColor: COLORS.card,
@@ -412,9 +463,27 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  announcementCafe: { fontSize: 13, fontWeight: '700', color: COLORS.text },
-  announcementMessage: { fontSize: 13, marginTop: 4, color: COLORS.text },
-  announcementDate: { fontSize: 11, color: COLORS.textFaint, marginTop: 6 },
+  announcementCafe: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
+  announcementMessage: {
+    fontSize: 13,
+    marginTop: 4,
+    color: COLORS.text,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+  },
+  announcementDate: {
+    fontSize: 11,
+    color: COLORS.textFaint,
+    marginTop: 6,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.2,
+  },
   cafeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -431,6 +500,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cafeName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
-  cafeNeighborhood: { fontSize: 12, color: COLORS.textMuted },
+  cafeName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
+  cafeNeighborhood: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
 });

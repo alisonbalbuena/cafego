@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 const DARK_BROWN = '#2a1810';
 // Matches the mascot GIF's baked-in background so it blends seamlessly.
@@ -65,32 +65,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 4,
+    borderColor: COLORS.accent,
   },
   mascot: { width: 210, height: 217 },
-  title: { fontSize: 36, fontWeight: '700', color: CREAM, marginTop: 16 },
-  tagline: { fontSize: 16, fontWeight: '600', color: COLORS.accent, marginTop: 6, textAlign: 'center' },
+  title: { fontFamily: FONTS.bold, fontSize: 34, color: CREAM, marginTop: 16, letterSpacing: 1.2 },
+  tagline: {
+    fontFamily: FONTS.semiBold,
+    fontSize: 15,
+    color: COLORS.accent,
+    marginTop: 8,
+    textAlign: 'center',
+    letterSpacing: 0.6,
+  },
   blurb: {
+    fontFamily: FONTS.regular,
     fontSize: 14,
     color: CREAM_MUTED,
     textAlign: 'center',
     marginTop: 14,
-    lineHeight: 21,
+    lineHeight: 23,
     paddingHorizontal: 8,
+    letterSpacing: 0.5,
   },
   continueButton: {
     backgroundColor: CREAM,
-    borderRadius: RADIUS.pill,
-    paddingVertical: 15,
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: DARK_BROWN,
+    paddingVertical: 14,
     alignItems: 'center',
     alignSelf: 'stretch',
     marginTop: 32,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
+    shadowColor: DARK_BROWN,
+    shadowOpacity: 1,
+    shadowOffset: { width: 3, height: 3 },
+    shadowRadius: 0,
     elevation: 4,
   },
-  continueText: { color: DARK_BROWN, fontSize: 16, fontWeight: '700' },
-  loginLink: { fontSize: 13, color: CREAM_FAINT, marginTop: 18 },
-  loginLinkBold: { color: COLORS.accent, fontWeight: '700' },
+  continueText: { fontFamily: FONTS.semiBold, color: DARK_BROWN, fontSize: 16, letterSpacing: 0.6 },
+  loginLink: {
+    fontFamily: FONTS.regular,
+    fontSize: 13,
+    color: CREAM_FAINT,
+    marginTop: 18,
+    letterSpacing: 0.4,
+  },
+  loginLinkBold: { fontFamily: FONTS.semiBold, color: COLORS.accent },
 });

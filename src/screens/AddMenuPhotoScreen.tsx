@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { db, storage } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 
 export default function AddMenuPhotoScreen({ route, navigation }: any) {
@@ -89,9 +89,9 @@ export default function AddMenuPhotoScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  subtitle: { fontSize: 14, color: COLORS.textMuted, marginTop: 4, marginBottom: 20 },
+  subtitle: { fontSize: 14, color: COLORS.textMuted, marginTop: 4, marginBottom: 20, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   pickArea: {
     height: 220,
     borderRadius: RADIUS.lg,
@@ -103,10 +103,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     overflow: 'hidden',
   },
-  pickAreaText: { fontSize: 14, color: COLORS.textMuted, fontWeight: '600' },
+  pickAreaText: { fontSize: 14, color: COLORS.textMuted, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   preview: { width: '100%', height: '100%' },
   secondaryButton: { alignItems: 'center', marginTop: 12 },
-  secondaryButtonText: { color: COLORS.link, fontSize: 13, fontWeight: '600' },
+  secondaryButtonText: { color: COLORS.link, fontSize: 13, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   buttonDisabled: { backgroundColor: COLORS.textFaint },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   cancelButton: { alignItems: 'center', marginTop: 16 },
-  cancelButtonText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '600' },
+  cancelButtonText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

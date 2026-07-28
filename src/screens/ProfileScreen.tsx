@@ -17,7 +17,7 @@ import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
 import { formatDuration } from '../utils/format';
 import { getAllNighterTitle } from '../utils/allNighter';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import SpendingSection from '../components/SpendingSection';
 import SessionHistorySection from '../components/SessionHistorySection';
 import BuddyAdventureStrip from '../components/BuddyAdventureStrip';
@@ -156,6 +156,8 @@ export default function ProfileScreen({ navigation }: any) {
         <BuddyAdventureStrip
           posts={buddyPosts}
           currentUid={user?.uid}
+          currentDisplayName={user?.displayName ?? 'Someone'}
+          allowDeletePost
           emptyText="No buddy adventures yet — take yours out from the Coffee Friends tab or a check-in photo!"
         />
       </View>
@@ -262,17 +264,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  menuButtonText: { fontSize: 18, color: COLORS.text },
+  menuButtonText: { fontSize: 18, color: COLORS.text, fontFamily: FONTS.regular },
   header: { alignItems: 'center', marginBottom: 24 },
   avatar: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.card },
   avatarPlaceholder: { alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: COLORS.border },
-  avatarPlaceholderText: { fontSize: 32, color: COLORS.textFaint, fontWeight: '700' },
-  name: { fontSize: 20, fontWeight: '700', marginTop: 12 },
-  username: { fontSize: 13, color: COLORS.textFaint, marginTop: 2 },
+  avatarPlaceholderText: { fontSize: 32, color: COLORS.textFaint, fontWeight: '700', fontFamily: FONTS.semiBold },
+  name: { fontSize: 20, fontWeight: '700', marginTop: 12, fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
+  username: { fontSize: 13, color: COLORS.textFaint, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   communityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   communityIcon: { width: 14, height: 14 },
-  community: { fontSize: 12, color: COLORS.link, fontWeight: '600' },
-  bio: { fontSize: 13, color: COLORS.text, marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
+  community: { fontSize: 12, color: COLORS.link, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  bio: {
+    fontSize: 13,
+    color: COLORS.text,
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+  },
   allNighterBadge: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,
@@ -280,8 +290,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginTop: 10,
   },
-  allNighterBadgeText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
-  friendsCount: { fontSize: 14, color: COLORS.link, fontWeight: '600', marginTop: 8 },
+  allNighterBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.primary,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
+  friendsCount: {
+    fontSize: 14,
+    color: COLORS.link,
+    fontWeight: '600',
+    marginTop: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
   statBox: {
     flex: 1,
@@ -290,12 +313,12 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
-  statValue: { fontSize: 20, fontWeight: '700' },
-  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: '700' },
+  statValue: { fontSize: 20, fontWeight: '700', fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
+  statLabel: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   spendingHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   spendingHeaderIcon: { width: 18, height: 18 },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   cafeRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -305,12 +328,18 @@ const styles = StyleSheet.create({
   },
   cafeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
   favoriteCafeIcon: { width: 14, height: 14 },
-  cafeName: { fontSize: 14, fontWeight: '600' },
-  cafeTime: { fontSize: 14, color: COLORS.textMuted },
+  cafeName: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  cafeTime: { fontSize: 14, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   signOutButton: { alignItems: 'center', marginTop: 24, marginBottom: 12 },
-  signOutText: { color: COLORS.danger, fontWeight: '600', fontSize: 15 },
+  signOutText: {
+    color: COLORS.danger,
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
   modalContainer: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', marginBottom: 20 },
+  heading: { fontSize: 22, fontWeight: '700', marginBottom: 20, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   // Each "More" panel item gets its own clearly bounded card with generous
   // spacing between them, so Account / Time by cafe / Session history read
   // as distinct blocks rather than one continuous list.
@@ -323,11 +352,30 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   moreSectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  moreSectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
-  moreSectionSubtext: { fontSize: 13, color: COLORS.link, fontWeight: '600' },
-  moreSectionChevron: { fontSize: 22, color: COLORS.textFaint },
+  moreSectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginBottom: 4,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.6,
+  },
+  moreSectionSubtext: {
+    fontSize: 13,
+    color: COLORS.link,
+    fontWeight: '600',
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
+  moreSectionChevron: { fontSize: 22, color: COLORS.textFaint, fontFamily: FONTS.regular },
   friendRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  friendName: { fontSize: 16, fontWeight: '500' },
+  friendName: { fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, letterSpacing: 0.4 },
   closeButton: { alignItems: 'center', padding: 14, marginTop: 12 },
-  closeButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 15 },
+  closeButtonText: {
+    color: COLORS.text,
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
+  },
 });

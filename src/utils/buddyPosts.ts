@@ -47,3 +47,24 @@ export async function postBuddyAdventure(uid: string, input: PostBuddyAdventureI
 export async function deleteBuddyPost(postId: string): Promise<void> {
   await deleteDoc(doc(db, 'buddyPosts', postId));
 }
+
+export async function postBuddyPostComment(
+  postId: string,
+  uid: string,
+  displayName: string,
+  text: string
+): Promise<void> {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  await addDoc(collection(db, 'buddyPostComments'), {
+    postId,
+    uid,
+    displayName,
+    text: trimmed,
+    createdAt: Date.now(),
+  });
+}
+
+export async function deleteBuddyPostComment(commentId: string): Promise<void> {
+  await deleteDoc(doc(db, 'buddyPostComments', commentId));
+}

@@ -8,11 +8,12 @@ import { useAuth } from '../hooks/useAuth';
 import { CAFES, HOME_LOCATION } from '../data/cafes';
 import { busynessMeta, Cafe, intensityMeta, isSessionPublic, StudySession } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import { distanceMiles } from '../utils/geo';
 import { isGooglePlacesConfigured, searchNearbyCafes } from '../utils/googlePlaces';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BackButton from '../components/BackButton';
+import PixelBean from '../components/PixelBean';
 
 interface Friend {
   uid: string;
@@ -232,9 +233,12 @@ export default function MapScreen({ navigation }: any) {
                     {'distance' in cafe ? ` · ${(cafe as any).distance.toFixed(1)} mi` : ''}
                   </Text>
                   {busyMeta && (
-                    <Text style={styles.calloutBusyness}>
-                      {busyMeta.emoji} {busyMeta.label} · {SCOPE_META[busy!.scope].label}
-                    </Text>
+                    <View style={styles.calloutBusynessRow}>
+                      <PixelBean color={busyMeta.color} size={12} />
+                      <Text style={styles.calloutBusyness}>
+                        {busyMeta.label} · {SCOPE_META[busy!.scope].label}
+                      </Text>
+                    </View>
                   )}
                   <Text style={styles.calloutLink}>Tap for details</Text>
                 </View>
@@ -266,9 +270,10 @@ export default function MapScreen({ navigation }: any) {
                     {intensityMeta(session.intensity).emoji} {intensityMeta(session.intensity).label}
                   </Text>
                   {busyMeta && (
-                    <Text style={styles.calloutBusyness}>
-                      {busyMeta.emoji} {busyMeta.label}
-                    </Text>
+                    <View style={styles.calloutBusynessRow}>
+                      <PixelBean color={busyMeta.color} size={12} />
+                      <Text style={styles.calloutBusyness}>{busyMeta.label}</Text>
+                    </View>
                   )}
                   <Text style={styles.calloutScope}>{SCOPE_META[scope].label}</Text>
                 </View>
@@ -286,10 +291,11 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   backButtonWrap: { position: 'absolute', left: 16, zIndex: 10 },
-  calloutTitle: { fontWeight: '700', fontSize: 14 },
-  calloutSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  calloutIntensity: { fontSize: 11, fontWeight: '600', color: COLORS.primary, marginTop: 4 },
-  calloutBusyness: { fontSize: 11, fontWeight: '600', color: COLORS.text, marginTop: 4 },
-  calloutScope: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
-  calloutLink: { fontSize: 11, color: COLORS.link, marginTop: 4 },
+  calloutTitle: { fontWeight: '700', fontSize: 14, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  calloutSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  calloutIntensity: { fontSize: 11, fontWeight: '600', color: COLORS.primary, marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
+  calloutBusynessRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  calloutBusyness: { fontSize: 11, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
+  calloutScope: { fontSize: 10, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular },
+  calloutLink: { fontSize: 11, color: COLORS.link, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.2 },
 });

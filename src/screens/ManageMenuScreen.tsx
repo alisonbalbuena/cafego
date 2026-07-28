@@ -29,7 +29,7 @@ import { db, storage } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { CafeProgram, MenuItem } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
 
 export default function ManageMenuScreen({ navigation }: any) {
@@ -246,9 +246,9 @@ export default function ManageMenuScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 8 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', marginTop: 12, marginBottom: 8, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 8,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   secondaryButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14 },
+  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 14, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   photoWrap: { marginRight: 8, position: 'relative' },
   photo: { width: 100, height: 100, borderRadius: 10, backgroundColor: COLORS.card },
   removePhoto: {
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removePhotoText: { color: '#fff', fontSize: 12, lineHeight: 12 },
+  removePhotoText: { color: '#fff', fontSize: 12, lineHeight: 12, fontFamily: FONTS.regular },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -296,9 +296,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  itemName: { fontSize: 14, fontWeight: '600' },
-  itemDescription: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  itemPrice: { fontSize: 14, fontWeight: '600', marginRight: 12 },
-  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600' },
-  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12 },
+  itemName: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  itemDescription: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  itemPrice: { fontSize: 14, fontWeight: '600', marginRight: 12, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  delete: { color: COLORS.danger, fontSize: 13, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  emptyText: { color: COLORS.textFaint, textAlign: 'center', marginTop: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
 });

@@ -27,7 +27,7 @@ import {
   RewardAccount,
 } from '../types';
 import { showAlert } from '../utils/alert';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 import { SHOW_ANNOUNCEMENTS, SHOW_LOYALTY_PROGRAM } from '../constants';
 import BackButton from '../components/BackButton';
 
@@ -489,16 +489,16 @@ export default function CafeProfileScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
-  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1 },
+  heading: { fontSize: 22, fontWeight: '700', flexShrink: 1, fontFamily: FONTS.bold, letterSpacing: 1.0 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
   progressCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 20 },
-  progressLabel: { fontSize: 14, fontWeight: '600' },
-  progressValue: { fontSize: 13, color: COLORS.success, marginTop: 4, fontWeight: '600' },
-  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 12, marginBottom: 8 },
-  emptyText: { color: COLORS.textFaint, marginBottom: 12 },
+  progressLabel: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  progressValue: { fontSize: 13, color: COLORS.success, marginTop: 4, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', marginTop: 12, marginBottom: 8, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  emptyText: { color: COLORS.textFaint, marginBottom: 12, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   announcementRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  announcementMessage: { fontSize: 14 },
-  announcementDate: { fontSize: 11, color: COLORS.textFaint, marginTop: 4 },
+  announcementMessage: { fontSize: 14, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  announcementDate: { fontSize: 11, color: COLORS.textFaint, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   menuRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -506,10 +506,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
-  menuName: { fontSize: 14, fontWeight: '600' },
-  menuDescription: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  menuPrice: { fontSize: 14, fontWeight: '600' },
-  link: { color: COLORS.link, fontSize: 14, fontWeight: '600', marginBottom: 10 },
+  menuName: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  menuDescription: { fontSize: 12, color: COLORS.textMuted, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.3 },
+  menuPrice: { fontSize: 14, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  link: { color: COLORS.link, fontSize: 14, fontWeight: '600', marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   photoRow: { marginBottom: 12 },
   communityPhotosLabel: {
     fontSize: 13,
@@ -517,6 +517,8 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 12,
     marginBottom: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.5,
   },
   addMenuPhotoButton: {
     borderWidth: 1,
@@ -527,7 +529,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  addMenuPhotoButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  addMenuPhotoButtonText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   photo: { width: 140, height: 140, borderRadius: 10, marginRight: 8, backgroundColor: COLORS.card },
   viewerBackdrop: {
     flex: 1,
@@ -538,18 +540,18 @@ const styles = StyleSheet.create({
   viewerImage: { width: '100%', height: '80%' },
   averagesCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 12 },
   averageRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 },
-  averageLabel: { fontSize: 13, width: 90 },
-  averageValue: { fontSize: 13, color: COLORS.textMuted },
-  reviewCount: { fontSize: 12, color: COLORS.textFaint, marginTop: 6 },
+  averageLabel: { fontSize: 13, width: 90, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  averageValue: { fontSize: 13, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  reviewCount: { fontSize: 12, color: COLORS.textFaint, marginTop: 6, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   reviewForm: { borderWidth: 1, borderColor: COLORS.borderLight, borderRadius: 12, padding: 16, marginTop: 4 },
-  formTitle: { fontSize: 14, fontWeight: '700', marginBottom: 10 },
+  formTitle: { fontSize: 14, fontWeight: '700', marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   formRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  formLabel: { fontSize: 13, color: COLORS.text },
+  formLabel: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -560,7 +562,15 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     marginTop: 8,
   },
-  photoLabel: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted, marginTop: 12, marginBottom: 8 },
+  photoLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    marginTop: 12,
+    marginBottom: 8,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
   reviewPhotoRow: { marginBottom: 4 },
   reviewPhotoWrap: { marginRight: 8, position: 'relative' },
   reviewPhoto: { width: 72, height: 72, borderRadius: 10, backgroundColor: COLORS.card },
@@ -583,7 +593,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removePhotoText: { color: '#fff', fontSize: 12, lineHeight: 12 },
+  removePhotoText: { color: '#fff', fontSize: 12, lineHeight: 12, fontFamily: FONTS.regular },
   addPhotoButton: {
     width: 72,
     height: 72,
@@ -594,7 +604,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addPhotoButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  addPhotoButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   button: {
     backgroundColor: COLORS.primary,
     borderRadius: 10,
@@ -602,10 +612,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  buttonText: { color: '#fff', fontWeight: '600', fontSize: 15, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   commentRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
-  commentAuthor: { fontSize: 13, fontWeight: '600' },
-  commentText: { fontSize: 13, color: COLORS.text, marginTop: 2 },
+  commentAuthor: { fontSize: 13, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  commentText: { fontSize: 13, color: COLORS.text, marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   friendReviewRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
   friendReviewHeader: {
     flexDirection: 'row',
@@ -628,5 +638,5 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
-  confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  confirmButtonText: { color: '#fff', fontWeight: '700', fontSize: 16, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
 });

@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
-import { COLORS, RADIUS } from '../theme';
+import { COLORS, RADIUS, FONTS } from '../theme';
 import { computeWeekStreak } from '../utils/dateHelpers';
 import { UI_ICONS } from '../data/uiIcons';
 import StudyCalendar from './StudyCalendar';
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   streakIcon: { width: 22, height: 22 },
-  streakText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, flex: 1 },
+  streakText: { fontSize: 13, fontWeight: '600', color: COLORS.primary, flex: 1, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,

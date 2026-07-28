@@ -1,4 +1,5 @@
 import { ImageSourcePropType } from 'react-native';
+import { COLORS } from '../theme';
 
 // Free text — whatever a student is studying (a class, course code, major, etc).
 export type Subject = string;
@@ -227,10 +228,10 @@ export interface StudyBuddy {
 
 export type BusynessLevel = 'open' | 'moderate' | 'busy';
 
-export const BUSYNESS_LEVELS: { value: BusynessLevel; label: string; emoji: string }[] = [
-  { value: 'open', label: 'Very open', emoji: '🟢' },
-  { value: 'moderate', label: 'Moderately busy', emoji: '🟡' },
-  { value: 'busy', label: 'Extremely busy', emoji: '🔴' },
+export const BUSYNESS_LEVELS: { value: BusynessLevel; label: string; emoji: string; color: string }[] = [
+  { value: 'open', label: 'Very open', emoji: '🟢', color: COLORS.success },
+  { value: 'moderate', label: 'Moderately busy', emoji: '🟡', color: COLORS.warning },
+  { value: 'busy', label: 'Extremely busy', emoji: '🔴', color: COLORS.danger },
 ];
 
 export function busynessMeta(level?: BusynessLevel) {
@@ -400,6 +401,15 @@ export interface BuddyPost {
   location?: string;
   caption?: string;
   source: BuddyPostSource;
+  createdAt: number;
+}
+
+export interface BuddyPostComment {
+  id: string;
+  postId: string;
+  uid: string;
+  displayName: string;
+  text: string;
   createdAt: number;
 }
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
-import { COLORS } from '../theme';
+import { COLORS, FONTS } from '../theme';
 
 interface Props {
   startedAt: number;
@@ -108,6 +108,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: COLORS.primary,
   },
-  timeText: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginTop: 12, letterSpacing: 1 },
-  pausedLabel: { fontSize: 12, fontWeight: '600', color: COLORS.accent, marginTop: 4 },
+  timeText: { fontSize: 22, fontWeight: '700', color: COLORS.text, marginTop: 12, letterSpacing: 1, fontFamily: FONTS.semiBold },
+  pausedLabel: { fontSize: 12, fontWeight: '600', color: COLORS.accent, marginTop: 4, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
 });
