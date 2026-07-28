@@ -43,6 +43,12 @@
       ],
       "@react-native-community/datetimepicker",
       [
+        "expo-contacts",
+        {
+          "contactsPermission": "Study Cafe would like to access your contacts to help you find friends who already use the app."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {

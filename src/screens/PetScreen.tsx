@@ -77,6 +77,7 @@ export default function PetScreen() {
   const [pendingAdventureResult, setPendingAdventureResult] = useState<BuddyPhotoResult | null>(null);
   const [adventureLocation, setAdventureLocation] = useState('');
   const [adventureCaption, setAdventureCaption] = useState('');
+  const [showCoinInfo, setShowCoinInfo] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -299,11 +300,28 @@ export default function PetScreen() {
     >
       <View style={styles.headerRow}>
         <Text style={styles.heading}>Coffee Friends</Text>
-        <View style={styles.coinBadge}>
+        <Pressable style={styles.coinBadge} onPress={() => setShowCoinInfo(true)} hitSlop={8}>
           <Image source={COIN_ICON} style={styles.coinIcon} />
           <Text style={styles.coinBadgeText}>{coins.toFixed(1)}</Text>
-        </View>
+        </Pressable>
       </View>
+
+      <Modal visible={showCoinInfo} animationType="fade" transparent onRequestClose={() => setShowCoinInfo(false)}>
+        <Pressable style={styles.coinInfoBackdrop} onPress={() => setShowCoinInfo(false)}>
+          <Pressable style={styles.coinInfoBubble} onPress={() => {}}>
+            <View style={styles.coinInfoArrow} />
+            <Text style={styles.coinInfoTitle}>💰 How to earn coins</Text>
+            <Text style={styles.coinInfoLine}>☕ 1 coin for every hour of active studying</Text>
+            <Text style={styles.coinInfoLine}>
+              🔥 Your weekly streak multiplies it — +20% more coins for every consecutive week you study
+            </Text>
+            <Text style={styles.coinInfoLine}>⏸️ Paused time doesn't count, so stay focused!</Text>
+            <Pressable style={styles.coinInfoClose} onPress={() => setShowCoinInfo(false)}>
+              <Text style={styles.coinInfoCloseText}>Got it</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <View style={[styles.previewCard, { backgroundColor: activeBackground.color }]}>
         <Text style={styles.backgroundBadge}>{activeBackground.emoji}</Text>
@@ -616,6 +634,57 @@ const styles = StyleSheet.create({
   },
   coinIcon: { width: 20, height: 20 },
   coinBadgeText: { fontSize: 14, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  coinInfoBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    paddingTop: 96,
+    paddingHorizontal: 20,
+    alignItems: 'flex-end',
+  },
+  coinInfoBubble: {
+    width: '100%',
+    maxWidth: 280,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+    padding: 16,
+  },
+  coinInfoArrow: {
+    position: 'absolute',
+    top: -10,
+    right: 24,
+    width: 18,
+    height: 18,
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderColor: COLORS.primary,
+    transform: [{ rotate: '45deg' }],
+  },
+  coinInfoTitle: {
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  coinInfoLine: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: COLORS.text,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  coinInfoClose: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+  },
+  coinInfoCloseText: { fontSize: 12, fontFamily: FONTS.semiBold, color: COLORS.white, letterSpacing: 0.4 },
   previewCard: {
     borderRadius: RADIUS.xl,
     borderWidth: 1,

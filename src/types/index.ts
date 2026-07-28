@@ -26,6 +26,8 @@ export interface UserProfile {
   username: string;
   bio?: string;
   email: string;
+  /** Self-declared at signup — the app requires 13+ (see AgeSlider). */
+  age?: number;
   createdAt: number;
   role: UserRole;
   loyaltyCode: string;
@@ -196,11 +198,13 @@ export interface FriendRequest {
 // session docs — it means "visible to friends" (same as the new 'friends' label).
 export type SessionVisibility = 'private' | 'public' | 'community' | 'everyone';
 
+// 'everyone' is a retired legacy wire value — no longer selectable (removed
+// from this list), but kept in the SessionVisibility type above so old
+// session docs that already have it still read/render correctly.
 export const VISIBILITY_LEVELS: { value: SessionVisibility; label: string; emoji: string }[] = [
   { value: 'private', label: 'Just me', emoji: '🔒' },
   { value: 'public', label: 'Friends', emoji: '👥' },
   { value: 'community', label: 'My community', emoji: '🏫' },
-  { value: 'everyone', label: 'Everyone', emoji: '🌍' },
 ];
 
 export function visibilityMeta(visibility?: SessionVisibility) {

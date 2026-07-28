@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, Pressable, Animated, StyleSheet } from 'react-native';
 import { COLORS, FONTS } from '../theme';
+import AgeSlider from '../components/AgeSlider';
+import { MIN_AGE_TO_USE_APP } from '../constants';
 
 const DARK_BROWN = '#2a1810';
 // Matches the mascot GIF's baked-in background so it blends seamlessly.
@@ -11,6 +13,7 @@ const CREAM_FAINT = '#b8a68d';
 export default function WelcomeScreen({ navigation }: any) {
   const fadeIn = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(16)).current;
+  const [age, setAge] = useState(18);
 
   useEffect(() => {
     Animated.parallel([
@@ -35,7 +38,15 @@ export default function WelcomeScreen({ navigation }: any) {
           Grab your spot, start a session, and focus with friends or just you and your coffee.
         </Text>
 
-        <Pressable style={styles.continueButton} onPress={() => navigation.navigate('SignUp')}>
+        <View style={styles.ageWrap}>
+          <AgeSlider age={age} onChange={setAge} dark />
+        </View>
+
+        <Pressable
+          style={[styles.continueButton, age < MIN_AGE_TO_USE_APP && styles.continueButtonDisabled]}
+          onPress={() => navigation.navigate('SignUp', { age })}
+          disabled={age < MIN_AGE_TO_USE_APP}
+        >
           <Text style={styles.continueText}>Continue</Text>
         </Pressable>
         <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8}>
@@ -88,6 +99,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     letterSpacing: 0.5,
   },
+  ageWrap: { alignSelf: 'stretch', marginTop: 22 },
   continueButton: {
     backgroundColor: CREAM,
     borderRadius: 14,
@@ -96,13 +108,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     alignSelf: 'stretch',
-    marginTop: 32,
+    marginTop: 18,
     shadowColor: DARK_BROWN,
     shadowOpacity: 1,
     shadowOffset: { width: 3, height: 3 },
     shadowRadius: 0,
     elevation: 4,
   },
+  continueButtonDisabled: { opacity: 0.4 },
   continueText: { fontFamily: FONTS.semiBold, color: DARK_BROWN, fontSize: 16, letterSpacing: 0.6 },
   loginLink: {
     fontFamily: FONTS.regular,

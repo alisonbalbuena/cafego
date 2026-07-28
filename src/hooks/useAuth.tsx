@@ -21,6 +21,7 @@ import {
 import { auth, db } from '../firebase/config';
 import { UserProfile } from '../types';
 import { DEFAULT_COFFEE_FRIEND_ID } from '../data/coffeeFriends';
+import { MIN_AGE_TO_USE_APP } from '../constants';
 
 const LOYALTY_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -65,7 +66,8 @@ interface AuthContextValue {
     password: string,
     firstName: string,
     lastName: string,
-    username: string
+    username: string,
+    age: number
   ) => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -185,11 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     firstName: string,
     lastName: string,
-    username: string
+    username: string,
+    age: number
   ) => {
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (!cleanUsername) {
       throw new Error('Username can only contain letters, numbers, and underscores.');
+    }
+    if (age < MIN_AGE_TO_USE_APP) {
+      throw new Error(`You must be ${MIN_AGE_TO_USE_APP} or older to use Study Cafe.`);
     }
 
     const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -219,6 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: cleanUsername,
       bio: '',
       email,
+      age,
       createdAt: serverTimestamp(),
       role: 'customer',
       loyaltyCode,

@@ -7,8 +7,10 @@ import {
   ImageSourcePropType,
   FlatList,
   RefreshControl,
+  Platform,
   StyleSheet,
 } from 'react-native';
+import * as Contacts from 'expo-contacts';
 import {
   addDoc,
   collection,
@@ -63,6 +65,9 @@ export default function FriendsScreen({ navigation }: any) {
   const [usernameSearch, setUsernameSearch] = useState('');
   const [searchResults, setSearchResults] = useState<UserSearchResult[]>([]);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [contactSuggestions, setContactSuggestions] = useState<UserSearchResult[]>([]);
+  const [checkingContacts, setCheckingContacts] = useState(false);
+  const [contactsChecked, setContactsChecked] = useState(false);
   const [friendProfiles, setFriendProfiles] = useState<Record<string, UserProfile>>({});
   const [pairStats, setPairStats] = useState<Record<string, number>>({});
   const [now, setNow] = useState(Date.now());
@@ -274,6 +279,60 @@ export default function FriendsScreen({ navigation }: any) {
     }
   };
 
+  /** Matches the device's contacts (by email) against Study Cafe accounts so
+   * the user can add people they already know. Only ever reads emails —
+   * nothing about the contact list itself is uploaded or stored. */
+  const findFriendsFromContacts = async () => {
+    if (!user) return;
+    if (Platform.OS === 'web') {
+      showAlert('Not available on web', 'Finding friends from contacts works from the mobile app.');
+      return;
+    }
+    setCheckingContacts(true);
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert(
+          'Contacts access needed',
+          'Allow contacts access to find friends who already use Study Cafe — you can enable this later in Settings.'
+        );
+        return;
+      }
+
+      const { data } = await Contacts.getContactsAsync({ fields: [Contacts.Fields.Emails] });
+      const contactEmails = new Set(
+        data.flatMap((c) => c.emails?.map((e) => e.email?.toLowerCase().trim()).filter(Boolean) ?? [])
+      );
+      const emails = Array.from(contactEmails) as string[];
+      if (emails.length === 0) {
+        setContactSuggestions([]);
+        setContactsChecked(true);
+        return;
+      }
+
+      const friendUids = new Set(friends.map((f) => f.uid));
+      const matches: UserSearchResult[] = [];
+      const seenUids = new Set<string>();
+      // Firestore 'in' queries cap at 30 values.
+      for (let i = 0; i < emails.length; i += 30) {
+        const batch = emails.slice(i, i + 30);
+        const snapshot = await getDocs(query(collection(db, 'users'), where('email', 'in', batch)));
+        snapshot.docs.forEach((d) => {
+          const u = d.data() as any;
+          if (u.uid === user.uid || friendUids.has(u.uid) || seenUids.has(u.uid)) return;
+          seenUids.add(u.uid);
+          matches.push({ uid: u.uid, username: u.username, displayName: u.displayName, photoUrl: u.photoUrl });
+        });
+      }
+      setContactSuggestions(matches);
+      setContactsChecked(true);
+    } catch (err: any) {
+      showAlert('Could not check contacts', err.message);
+    } finally {
+      setCheckingContacts(false);
+    }
+  };
+
   const acceptRequest = async (request: FriendRequest) => {
     if (!user) return;
     try {
@@ -399,6 +458,54 @@ export default function FriendsScreen({ navigation }: any) {
                   : '⚪ Mark yourself free to study for the next hour'}
               </Text>
             </Pressable>
+
+            <Pressable
+              style={styles.contactsButton}
+              onPress={findFriendsFromContacts}
+              disabled={checkingContacts}
+            >
+              <Text style={styles.contactsButtonText}>
+                {checkingContacts ? 'Checking contacts…' : '📇 Find friends from your contacts'}
+              </Text>
+            </Pressable>
+
+            {contactsChecked && contactSuggestions.length === 0 && (
+              <Text style={styles.contactsEmptyText}>
+                No one from your contacts is on Study Cafe yet.
+              </Text>
+            )}
+
+            {contactSuggestions.length > 0 && (
+              <View style={styles.searchResults}>
+                <Text style={styles.contactsSectionLabel}>From your contacts</Text>
+                {contactSuggestions.map((result) => (
+                  <View key={result.uid} style={styles.searchRow}>
+                    {result.photoUrl ? (
+                      <Image source={{ uri: result.photoUrl }} style={styles.avatar} />
+                    ) : (
+                      <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                        <Text style={styles.avatarPlaceholderText}>
+                          {result.username.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.searchUsername}>@{result.username}</Text>
+                      <Text style={styles.searchRealName}>{result.displayName}</Text>
+                    </View>
+                    <Pressable
+                      style={styles.addButton}
+                      onPress={() => sendRequestTo(result)}
+                      disabled={sendingTo === result.uid}
+                    >
+                      <Text style={styles.addButtonText}>
+                        {sendingTo === result.uid ? '…' : 'Add'}
+                      </Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+            )}
 
             <SearchBar
               style={{ marginBottom: 8 }}
@@ -542,6 +649,34 @@ export default function FriendsScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
   heading: { fontSize: 22, fontWeight: '700', marginBottom: 16, fontFamily: FONTS.bold, letterSpacing: 1.0 },
+  contactsButton: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  contactsButtonText: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
+    color: COLORS.text,
+    letterSpacing: 0.3,
+  },
+  contactsEmptyText: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: COLORS.textFaint,
+    marginBottom: 10,
+  },
+  contactsSectionLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.semiBold,
+    color: COLORS.textMuted,
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
   searchResults: { marginBottom: 16 },
   searchRow: {
     flexDirection: 'row',

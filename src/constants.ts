@@ -1,4 +1,5 @@
 export const ADMIN_EMAIL = 'skim460725@gmail.com';
+export const MIN_AGE_TO_USE_APP = 13;
 export const VERIFICATION_CONTACT = 'skim460725@gmail.com or +1 (470) 417-2599';
 
 // Toggle to bring back the cafe loyalty/rewards program (Rewards + My Cafe tabs,

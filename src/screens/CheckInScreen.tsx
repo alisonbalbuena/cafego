@@ -1322,10 +1322,6 @@ export default function CheckInScreen({ navigation, route }: any) {
           </Pressable>
         ))}
       </View>
-      {visibility === 'everyone' && (
-        <Text style={styles.hint}>Anyone using the app will be able to see this session.</Text>
-      )}
-
       <Pressable
         style={[styles.button, (!selectedCafe || !selectedSubject) && styles.buttonDisabled]}
         onPress={startSession}
