@@ -9,8 +9,10 @@ import { CAFES } from '../data/cafes';
 import { CafeAnnouncement, Cafe, intensityMeta, isSessionPublic, StudySession } from '../types';
 import { COLORS, RADIUS, FONTS } from '../theme';
 import SearchBar from '../components/SearchBar';
+import CafeRequestButton from '../components/CafeRequestButton';
 import StudyCalendarSection from '../components/StudyCalendarSection';
 import NudgeBanner from '../components/NudgeBanner';
+import FeatureTip from '../components/FeatureTip';
 import MapPreview from '../components/MapPreview';
 import CommunityFeedSection from '../components/CommunityFeedSection';
 import WeeklyRecapCard from '../components/WeeklyRecapCard';
@@ -27,24 +29,24 @@ interface Friend {
 }
 
 const MOTIVATIONAL_QUOTES = [
-  'Time to grind ☕',
-  'Work hard, play hard 💪',
-  "Let's lock in 🔒",
-  'Stay hungry, stay focused 🔥',
-  'One session closer to greatness ✨',
-  'No days off 📚',
-  'Future you says thanks 🙏',
-  'Get after it 🚀',
-  'Small steps, big wins 👣',
-  'Discipline over motivation 💯',
-  'Progress, not perfection 📈',
-  'You vs. you 🏆',
-  'Turn coffee into knowledge ☕',
-  "Let's make today count ⏳",
-  'Chase the grind 🎯',
-  'Consistency beats intensity 🌱',
-  'Show up for yourself today 💫',
-  'Big goals start with small sessions 🌟',
+  'Time to grind',
+  'Work hard, play hard',
+  "Let's lock in",
+  'Stay hungry, stay focused',
+  'One session closer to greatness',
+  'No days off',
+  'Future you says thanks',
+  'Get after it',
+  'Small steps, big wins',
+  'Discipline over motivation',
+  'Progress, not perfection',
+  'You vs. you',
+  'Turn coffee into knowledge',
+  "Let's make today count",
+  'Chase the grind',
+  'Consistency beats intensity',
+  'Show up for yourself today',
+  'Big goals start with small sessions',
 ];
 
 function randomQuote() {
@@ -204,6 +206,7 @@ export default function HomeScreen({ navigation }: any) {
             </Pressable>
           )}
         />
+        <CafeRequestButton />
       </View>
     );
   }
@@ -216,12 +219,30 @@ export default function HomeScreen({ navigation }: any) {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
       }
     >
-      <Text style={styles.greeting}>{quote}</Text>
-      <Text style={styles.heading}>
-        {profile?.firstName ?? profile?.displayName ?? 'Welcome back'}
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.greeting}>{quote}</Text>
+          <Text style={styles.heading}>
+            {profile?.firstName ?? profile?.displayName ?? 'Welcome back'}
+          </Text>
+        </View>
+        <Image
+          source={require('../../assets/mascot-wave.gif')}
+          style={styles.mascotWave}
+          resizeMode="contain"
+        />
+      </View>
 
       <NudgeBanner />
+
+      <FeatureTip
+        id="home-budget-screentime-nudge"
+        title="💰🔒 Don't miss these"
+        body="Your Profile tab has a spending budget tracker and a Screen Time shield that locks distracting apps while you study — both are quick to set up and easy to scroll past."
+        highlight
+        actionLabel="Take me there"
+        onAction={() => navigation.navigate('Profile')}
+      />
 
       {/* Weekly Recap ("This week" summary) hidden for now — bring back when ready. */}
 
@@ -259,7 +280,8 @@ export default function HomeScreen({ navigation }: any) {
                 </Text>
                 <View style={styles.intensityPill}>
                   <Text style={styles.intensityPillText}>
-                    {intensityMeta(s.intensity).emoji} {intensityMeta(s.intensity).label}
+                    {intensityMeta(s.intensity).emoji ? `${intensityMeta(s.intensity).emoji} ` : ''}
+                    {intensityMeta(s.intensity).label}
                   </Text>
                 </View>
               </View>
@@ -270,7 +292,7 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.buddyAdventureEmoji}>🎒</Text>
+        <Image source={UI_ICONS.backpack} style={styles.sectionHeaderIcon} resizeMode="contain" />
         <Text style={styles.sectionTitle}>Buddy adventures</Text>
       </View>
       <BuddyAdventureStrip
@@ -349,6 +371,8 @@ export default function HomeScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 60, backgroundColor: COLORS.bg },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  mascotWave: { width: 64, height: 64, marginLeft: 8 },
   greeting: {
     fontSize: 19,
     fontWeight: '700',
@@ -391,7 +415,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   sectionHeaderIcon: { width: 18, height: 18 },
-  buddyAdventureEmoji: { fontSize: 16, fontFamily: FONTS.regular },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',

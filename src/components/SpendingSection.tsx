@@ -15,19 +15,26 @@ const PERIOD_LABELS: Record<Period, string> = { week: 'Week', month: 'Month', ye
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export default function SpendingSection() {
+interface Props {
+  /** Whose spending to show — defaults to the signed-in user's own. Pass a
+   * friend's uid to reuse this on a read-only FriendProfileScreen. */
+  uid?: string;
+}
+
+export default function SpendingSection({ uid }: Props) {
   const { user } = useAuth();
+  const targetUid = uid ?? user?.uid;
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [period, setPeriod] = useState<Period>('week');
 
   useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'studySessions'), where('uid', '==', user.uid));
+    if (!targetUid) return;
+    const q = query(collection(db, 'studySessions'), where('uid', '==', targetUid));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setSessions(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     });
     return unsubscribe;
-  }, [user]);
+  }, [targetUid]);
 
   const completed = useMemo(() => sessions.filter((s) => s.endedAt != null), [sessions]);
 

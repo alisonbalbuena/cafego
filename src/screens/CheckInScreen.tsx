@@ -46,7 +46,11 @@ import {
   startStudyTimerActivity,
   updateStudyTimerActivity,
 } from 'study-timer-activity';
-import { getPhaseLabel, getPhaseRemainingMs } from '../utils/studyMethodTimer';
+import {
+  estimateMethodTotalMinutes,
+  getPhaseLabel,
+  getPhaseRemainingMs,
+} from '../utils/studyMethodTimer';
 import {
   BusynessLevel,
   BUSYNESS_LEVELS,
@@ -70,20 +74,33 @@ import { COLORS, FONTS } from '../theme';
 import { distanceMiles } from '../utils/geo';
 import { isAllNighter } from '../utils/allNighter';
 import { monthKey, startOfMonth, startOfWeek } from '../utils/dateHelpers';
-import { formatMoney } from '../utils/format';
+import { formatDuration, formatMoney } from '../utils/format';
 import { getRemainingSyncExits } from '../utils/syncExitLimit';
 import { incrementPairStats } from '../utils/pairStats';
 import { isGooglePlacesConfigured, searchCafesByText, searchNearbyCafes } from '../utils/googlePlaces';
 import { computeStreakCoins } from '../utils/streakCoins';
 import { useRefresh } from '../hooks/useRefresh';
 import SearchBar from '../components/SearchBar';
-import CoffeeMugTimer from '../components/CoffeeMugTimer';
+import FeatureTip from '../components/FeatureTip';
+import CafeRequestButton from '../components/CafeRequestButton';
 import StudyMethodTimer from '../components/StudyMethodTimer';
 
 interface Friend {
   uid: string;
   displayName: string;
   username?: string;
+}
+
+const EXIT_CODE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+/** A fresh one-time 25-char code the user must retype exactly to leave a
+ * synced session early — deliberate friction, not a security control. */
+function generateExitVerificationCode(length = 25): string {
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += EXIT_CODE_CHARS[Math.floor(Math.random() * EXIT_CODE_CHARS.length)];
+  }
+  return out;
 }
 
 export default function CheckInScreen({ navigation, route }: any) {
@@ -99,21 +116,24 @@ export default function CheckInScreen({ navigation, route }: any) {
   const [visibility, setVisibility] = useState<SessionVisibility>('public');
   const [intensity, setIntensity] = useState<StudyIntensity>('working');
   const [studyMode, setStudyMode] = useState<StudyMode>('solo');
-  const [studyMethod, setStudyMethod] = useState<StudyMethod>('custom');
+  const [studyMethod, setStudyMethod] = useState<StudyMethod>('timeboxing');
   const [timeboxMinutes, setTimeboxMinutes] = useState('45');
   const [customTotalMinutes, setCustomTotalMinutes] = useState('120');
   const [customWorkMinutes, setCustomWorkMinutes] = useState('25');
   const [customBreakMinutes, setCustomBreakMinutes] = useState('5');
   const [customBreakCount, setCustomBreakCount] = useState('3');
+  const [plannedRounds, setPlannedRounds] = useState('4');
   const [taggedFriends, setTaggedFriends] = useState<StudyBuddy[]>([]);
   const [friendTagSearch, setFriendTagSearch] = useState('');
-  const [wantSync, setWantSync] = useState(false);
+  const [allowSync, setAllowSync] = useState(false);
   const [partnerSession, setPartnerSession] = useState<StudySession | null>(null);
   const [partnerLeftBanner, setPartnerLeftBanner] = useState<{ name: string; reason?: string } | null>(
     null
   );
   const [showExitReason, setShowExitReason] = useState(false);
   const [exitReasonDraft, setExitReasonDraft] = useState('');
+  const [exitVerificationCode, setExitVerificationCode] = useState('');
+  const [exitVerificationInput, setExitVerificationInput] = useState('');
   const partnerSessionIdRef = useRef<string | null>(null);
   const completingSyncRef = useRef(false);
   const [spentMoney, setSpentMoney] = useState<'yes' | 'no' | null>(null);
@@ -126,6 +146,7 @@ export default function CheckInScreen({ navigation, route }: any) {
   const [cafeActiveSessions, setCafeActiveSessions] = useState<StudySession[]>([]);
   const [liveNearbyCafes, setLiveNearbyCafes] = useState<Cafe[] | null>(null);
   const [liveSearchCafes, setLiveSearchCafes] = useState<Cafe[] | null>(null);
+  const [visitedCafeIds, setVisitedCafeIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
@@ -139,6 +160,15 @@ export default function CheckInScreen({ navigation, route }: any) {
   useEffect(() => {
     setSubjectDraft(activeSession?.subject ?? '');
   }, [activeSession?.id, activeSession?.subject]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, 'studySessions'), where('uid', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setVisitedCafeIds(new Set(snapshot.docs.map((d) => (d.data() as any).cafeId as string)));
+    });
+    return unsubscribe;
+  }, [user]);
 
   useEffect(() => {
     (async () => {
@@ -177,21 +207,25 @@ export default function CheckInScreen({ navigation, route }: any) {
     return () => clearTimeout(timeout);
   }, [search, location]);
 
+  // Same query serves two purposes depending on which is set (they're never
+  // both set at once): "How busy is it here?" while picking a cafe before
+  // starting, and "Friends here right now" once a session is active.
+  const busynessCafeId = selectedCafe?.id ?? activeSession?.cafeId;
   useEffect(() => {
-    if (!activeSession || activeSession.cafeId === HOME_LOCATION.id) {
+    if (!busynessCafeId || busynessCafeId === HOME_LOCATION.id) {
       setCafeActiveSessions([]);
       return;
     }
     const q = query(
       collection(db, 'studySessions'),
-      where('cafeId', '==', activeSession.cafeId),
+      where('cafeId', '==', busynessCafeId),
       where('endedAt', '==', null)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setCafeActiveSessions(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
     });
     return unsubscribe;
-  }, [activeSession?.cafeId]);
+  }, [busynessCafeId]);
 
   useEffect(() => {
     completingSyncRef.current = false;
@@ -240,6 +274,14 @@ export default function CheckInScreen({ navigation, route }: any) {
     partnerSession?.syncPartnerUid === user?.uid
   );
 
+  // Whoever checked in first is the "host" — the shared clock both partners'
+  // timers, shield locks, and Live Activities follow. Ties (identical
+  // startedAt) favor this device so there's always exactly one authority.
+  const isSyncHost =
+    !isSynced || !activeSession || !partnerSession || activeSession.startedAt <= partnerSession.startedAt;
+  const timingSession =
+    isSynced && !isSyncHost && partnerSession ? partnerSession : activeSession;
+
   const remainingSyncExits = getRemainingSyncExits(
     profile?.syncExitCount,
     profile?.syncExitMonthKey,
@@ -260,6 +302,18 @@ export default function CheckInScreen({ navigation, route }: any) {
     return cafeActiveSessions.filter((s) => s.uid !== user?.uid && friendUids.has(s.uid));
   }, [cafeActiveSessions, friends, user]);
 
+  // Most recent busyness report from anyone currently checked into the
+  // selected cafe — shown before starting a session so you know what you're
+  // walking into, not just from friends but anyone who's reported it.
+  const selectedCafeBusyness = useMemo(() => {
+    let latest: StudySession | null = null;
+    for (const s of cafeActiveSessions) {
+      if (!s.busynessReport) continue;
+      if (!latest || s.startedAt > latest.startedAt) latest = s;
+    }
+    return latest;
+  }, [cafeActiveSessions]);
+
   const baseCafes = liveNearbyCafes ?? CAFES;
 
   const sortedCafes = useMemo(() => {
@@ -274,7 +328,17 @@ export default function CheckInScreen({ navigation, route }: any) {
 
   const filteredCafes = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return location ? sortedCafes.slice(0, 5) : sortedCafes;
+    if (!term) {
+      if (!location) return sortedCafes;
+      // "Recommended near you" skips cafes you've already checked into,
+      // surfacing the next-closest ones you haven't been to yet — but still
+      // guarantees at least 5 suggestions, backfilling with your closest
+      // already-visited cafes if there aren't 5 unvisited ones nearby.
+      const unvisited = sortedCafes.filter((c) => !visitedCafeIds.has(c.id));
+      if (unvisited.length >= 5) return unvisited.slice(0, 5);
+      const visited = sortedCafes.filter((c) => visitedCafeIds.has(c.id));
+      return [...unvisited, ...visited].slice(0, 5);
+    }
     if (liveSearchCafes !== null) {
       return liveSearchCafes.map((c) => ({ ...c, distance: undefined as number | undefined }));
     }
@@ -282,7 +346,7 @@ export default function CheckInScreen({ navigation, route }: any) {
       (c) =>
         c.name.toLowerCase().includes(term) || c.neighborhood.toLowerCase().includes(term)
     );
-  }, [search, sortedCafes, location, liveSearchCafes]);
+  }, [search, sortedCafes, location, liveSearchCafes, visitedCafeIds]);
 
   const filteredFriendsForTag = useMemo(() => {
     const term = friendTagSearch.trim().toLowerCase();
@@ -408,6 +472,7 @@ export default function CheckInScreen({ navigation, route }: any) {
     }
   };
 
+
   const startSession = async () => {
     const subject = selectedSubject.trim();
     if (!user || !selectedCafe || !subject) return;
@@ -446,6 +511,7 @@ export default function CheckInScreen({ navigation, route }: any) {
         } else {
           payload.methodWorkMin = methodMeta.workMin;
           payload.methodBreakMin = methodMeta.breakMin ?? 0;
+          payload.methodRoundsPlanned = Math.max(1, Number(plannedRounds) || 1);
         }
         payload.methodPhase = 'work';
         payload.methodPhaseStartedAt = startedAt;
@@ -454,8 +520,8 @@ export default function CheckInScreen({ navigation, route }: any) {
       if (studyMode === 'group' && taggedFriends.length > 0) {
         payload.withFriends = taggedFriends;
       }
-      if (studyMode === 'group' && wantSync && taggedFriends.length === 1) {
-        payload.syncPartnerUid = taggedFriends[0].uid;
+      if (allowSync) {
+        payload.allowSync = true;
       }
       const adventure = await computeLocationAdventure(selectedCafe.id, selectedCafe.name);
       const sessionRef = await addDoc(collection(db, 'studySessions'), payload);
@@ -486,7 +552,7 @@ export default function CheckInScreen({ navigation, route }: any) {
       setVisibility('public');
       setIntensity('working');
       setStudyMode('solo');
-      setStudyMethod('custom');
+      setStudyMethod('timeboxing');
       setTimeboxMinutes('45');
       setCustomTotalMinutes('120');
       setCustomWorkMinutes('25');
@@ -494,7 +560,7 @@ export default function CheckInScreen({ navigation, route }: any) {
       setCustomBreakCount('3');
       setTaggedFriends([]);
       setFriendTagSearch('');
-      setWantSync(false);
+      setAllowSync(false);
     } catch (err: any) {
       showAlert('Could not start session', err.message);
     } finally {
@@ -521,20 +587,31 @@ export default function CheckInScreen({ navigation, route }: any) {
 
   const pauseSession = async () => {
     if (!activeSession || activeSession.pausedAt) return;
+    const now = Date.now();
     try {
       await updateDoc(doc(db, 'studySessions', activeSession.id), {
         paused: true,
-        pausedAt: Date.now(),
+        pausedAt: now,
       });
+      // Synced: pausing either side pauses the shared clock for both —
+      // mirror the same timestamp onto the partner's own doc so each
+      // person's individual elapsed-time/coin math stays correct too.
+      if (isSynced && partnerSession && !partnerSession.pausedAt) {
+        updateDoc(doc(db, 'studySessions', partnerSession.id), {
+          paused: true,
+          pausedAt: now,
+        }).catch(() => {});
+      }
       if (profile?.screenTimeShieldEnabled) {
         removeShield().catch(() => {});
       }
+      const timing = timingSession ?? activeSession;
       if (activeSession.studyMethod && activeSession.studyMethod !== 'none') {
         updateStudyTimerActivity({
           subject: activeSession.subject,
-          phaseLabel: getPhaseLabel(activeSession.methodPhase ?? 'work'),
-          phaseEndDate: Date.now(),
-          remainingSeconds: Math.round(getPhaseRemainingMs(activeSession, Date.now()) / 1000),
+          phaseLabel: getPhaseLabel(timing.methodPhase ?? 'work'),
+          phaseEndDate: now,
+          remainingSeconds: Math.round(getPhaseRemainingMs(timing, now) / 1000),
           paused: true,
         }).catch(() => {});
       }
@@ -545,29 +622,49 @@ export default function CheckInScreen({ navigation, route }: any) {
 
   const resumeSession = async () => {
     if (!activeSession || !activeSession.pausedAt) return;
+    const now = Date.now();
     try {
-      const additionalPauseMs = Date.now() - activeSession.pausedAt;
+      const additionalPauseMs = now - activeSession.pausedAt;
       await updateDoc(doc(db, 'studySessions', activeSession.id), {
         paused: false,
         pausedAt: null,
         pausedMs: (activeSession.pausedMs ?? 0) + additionalPauseMs,
       });
-      const phase = activeSession.methodPhase ?? 'work';
+      if (isSynced && partnerSession?.pausedAt) {
+        const partnerAdditionalMs = now - partnerSession.pausedAt;
+        updateDoc(doc(db, 'studySessions', partnerSession.id), {
+          paused: false,
+          pausedAt: null,
+          pausedMs: (partnerSession.pausedMs ?? 0) + partnerAdditionalMs,
+        }).catch(() => {});
+      }
+      const timing = timingSession ?? activeSession;
+      const phase = timing.methodPhase ?? 'work';
       if (profile?.screenTimeShieldEnabled && phase === 'work') {
         applyShield().catch(() => {});
       }
       if (activeSession.studyMethod && activeSession.studyMethod !== 'none') {
-        const remainingMs = getPhaseRemainingMs(activeSession, Date.now());
+        const remainingMs = getPhaseRemainingMs(timing, now);
         updateStudyTimerActivity({
           subject: activeSession.subject,
           phaseLabel: getPhaseLabel(phase),
-          phaseEndDate: Date.now() + remainingMs,
+          phaseEndDate: now + remainingMs,
           remainingSeconds: Math.round(remainingMs / 1000),
           paused: false,
         }).catch(() => {});
       }
     } catch (err: any) {
       showAlert('Could not resume session', err.message);
+    }
+  };
+
+  const toggleActiveAllowSync = async () => {
+    if (!activeSession) return;
+    const next = !activeSession.allowSync;
+    try {
+      await updateDoc(doc(db, 'studySessions', activeSession.id), { allowSync: next });
+    } catch (err: any) {
+      showAlert('Could not update setting', err.message);
     }
   };
 
@@ -619,7 +716,7 @@ export default function CheckInScreen({ navigation, route }: any) {
         `Studied ${session.subject} at ${session.cafeName}`,
         new Date(session.startedAt),
         new Date(endedAt),
-        'Logged via Study Cafe'
+        'Logged via Focus Brew'
       ).catch(() => {});
     }
     if (profile?.screenTimeShieldEnabled) {
@@ -672,11 +769,44 @@ export default function CheckInScreen({ navigation, route }: any) {
     }
   };
 
-  /** Leaving a synced session early requires a one-line reason, visible only
-   * to your partner — soft-tracked at 3/month, never blocked. */
+  /** Opens the early-exit flow — blocked outright once the monthly allowance
+   * is used up. Generates a fresh random code the user must retype exactly
+   * (paste disabled) plus a required reason, so leaving early is deliberate
+   * friction rather than a one-tap accident. */
+  const openExitReason = () => {
+    if (remainingSyncExits <= 0) {
+      showAlert(
+        'No early exits left this month',
+        isSynced
+          ? "You've used all 3 early exits this month — this session needs to finish normally with your partner."
+          : "You've used all 3 early exits this month — this session needs to run until the timer finishes."
+      );
+      return;
+    }
+    setExitVerificationCode(generateExitVerificationCode());
+    setExitVerificationInput('');
+    setExitReasonDraft('');
+    setShowExitReason(true);
+  };
+
+  /** Ending any session before its timer finishes requires exactly retyping
+   * a random one-time code (no pasting) plus a required one-line reason
+   * (shown to your partner when synced) — hard-capped at 3 exits/month. */
   const submitEarlyExit = async () => {
     if (!activeSession || !user) return;
-    const reason = exitReasonDraft.trim().slice(0, 80) || 'No reason given';
+    if (remainingSyncExits <= 0) {
+      showAlert('No early exits left this month', 'You\'ve used all 3 early exits this month.');
+      return;
+    }
+    if (exitVerificationInput !== exitVerificationCode) {
+      showAlert('Code doesn\'t match', 'Type the code exactly as shown — no copy and paste.');
+      return;
+    }
+    const reason = exitReasonDraft.trim();
+    if (!reason) {
+      showAlert('Reason required', "Let your partner know why you're leaving early.");
+      return;
+    }
     setShowExitReason(false);
     setSubmitting(true);
     try {
@@ -750,17 +880,26 @@ export default function CheckInScreen({ navigation, route }: any) {
       if (activeSession.studyMode === 'group' && activeSession.withFriends?.length) {
         payload.withFriends = activeSession.withFriends;
       }
+      if (activeSession.allowSync) {
+        payload.allowSync = true;
+      }
       if (activeSession.studyMethod && activeSession.studyMethod !== 'none') {
         payload.studyMethod = activeSession.studyMethod;
         payload.methodWorkMin = activeSession.methodWorkMin;
         payload.methodBreakMin = activeSession.methodBreakMin;
         if (activeSession.methodTotalMin != null) payload.methodTotalMin = activeSession.methodTotalMin;
         if (activeSession.methodBreakCount != null) payload.methodBreakCount = activeSession.methodBreakCount;
+        if (activeSession.methodRoundsPlanned != null) {
+          payload.methodRoundsPlanned = activeSession.methodRoundsPlanned;
+        }
         payload.methodPhase = 'work';
         payload.methodPhaseStartedAt = startedAt;
         payload.methodRound = 1;
       }
       await addDoc(collection(db, 'studySessions'), payload);
+      if (profile?.screenTimeShieldEnabled) {
+        applyShield().catch(() => {});
+      }
       if (payload.studyMethod) {
         startStudyTimerActivity(activeSession.cafeName, {
           subject: activeSession.subject,
@@ -798,11 +937,6 @@ export default function CheckInScreen({ navigation, route }: any) {
         <View style={styles.activeCard}>
           <Text style={styles.activeCafe}>{activeSession.cafeName}</Text>
           <Text style={styles.activeSubject}>{activeSession.subject}</Text>
-          <CoffeeMugTimer
-            startedAt={activeSession.startedAt}
-            pausedMs={activeSession.pausedMs}
-            pausedAt={activeSession.pausedAt}
-          />
           <Pressable
             style={activeSession.pausedAt ? styles.resumeButton : styles.pauseButton}
             onPress={activeSession.pausedAt ? resumeSession : pauseSession}
@@ -813,7 +947,10 @@ export default function CheckInScreen({ navigation, route }: any) {
           </Pressable>
           <View style={styles.activeIntensityPill}>
             <Text style={styles.activeIntensityText}>
-              {intensityMeta(activeSession.intensity).emoji} {intensityMeta(activeSession.intensity).label}
+              {intensityMeta(activeSession.intensity).emoji
+                ? `${intensityMeta(activeSession.intensity).emoji} `
+                : ''}
+              {intensityMeta(activeSession.intensity).label}
             </Text>
           </View>
           {activeSession.studyMode === 'group' && !!activeSession.withFriends?.length && (
@@ -833,17 +970,32 @@ export default function CheckInScreen({ navigation, route }: any) {
           </Text>
           <StudyMethodTimer
             session={activeSession}
+            timingSession={timingSession ?? undefined}
             screenTimeShieldEnabled={profile?.screenTimeShieldEnabled}
           />
         </View>
+
+        {!activeSession.syncPartnerUid && (
+          <Pressable
+            style={[styles.syncToggle, styles.syncToggleRow]}
+            onPress={toggleActiveAllowSync}
+          >
+            <Text style={styles.syncCheckbox}>{activeSession.allowSync ? '☑' : '☐'}</Text>
+            <Image source={UI_ICONS.synced} style={styles.syncToggleIcon} resizeMode="contain" />
+            <Text style={styles.syncToggleText}>Allow friends to sync with this session</Text>
+          </Pressable>
+        )}
 
         {!!activeSession.syncPartnerUid && (
           <View style={styles.syncStatusCard}>
             {isSynced ? (
               <>
-                <Text style={styles.syncStatusTitle}>
-                  🔗 Synced with {partnerSession?.displayName}
-                </Text>
+                <View style={styles.syncStatusTitleRow}>
+                  <Image source={UI_ICONS.synced} style={styles.syncStatusTitleIcon} resizeMode="contain" />
+                  <Text style={styles.syncStatusTitle}>
+                    Synced with {partnerSession?.displayName}
+                  </Text>
+                </View>
                 <Text style={styles.syncStatusMeta}>
                   📍 {partnerSession?.cafeName} · {partnerSession?.subject}
                   {partnerSession?.pausedAt ? ' · ⏸ paused' : ''}
@@ -855,7 +1007,10 @@ export default function CheckInScreen({ navigation, route }: any) {
                 )}
               </>
             ) : (
-              <Text style={styles.syncStatusTitle}>🔗 Waiting to sync…</Text>
+              <View style={styles.syncStatusTitleRow}>
+                <Image source={UI_ICONS.synced} style={styles.syncStatusTitleIcon} resizeMode="contain" />
+                <Text style={styles.syncStatusTitle}>Waiting to sync…</Text>
+              </View>
             )}
           </View>
         )}
@@ -896,7 +1051,10 @@ export default function CheckInScreen({ navigation, route }: any) {
 
         {friendsAtCafe.length > 0 && (
           <View style={styles.lockCard}>
-            <Text style={styles.lockCardTitle}>👥 Friends here right now</Text>
+            <View style={styles.lockCardTitleRow}>
+              <Image source={UI_ICONS.withFriends} style={styles.lockCardTitleIcon} resizeMode="contain" />
+              <Text style={styles.lockCardTitle}>Friends here right now</Text>
+            </View>
             {friendsAtCafe.map((s) => {
               const report = busynessMeta(s.busynessReport);
               return (
@@ -967,68 +1125,105 @@ export default function CheckInScreen({ navigation, route }: any) {
           </>
         )}
 
-        {isSynced ? (
-          showExitReason ? (
-            <View style={styles.exitReasonCard}>
-              <Text style={styles.label}>
-                One line for {partnerSession?.displayName} — why are you leaving?
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. ran out of time"
-                placeholderTextColor={COLORS.textFaint}
-                value={exitReasonDraft}
-                onChangeText={setExitReasonDraft}
-                maxLength={80}
-                autoFocus
-              />
-              <View style={styles.exitReasonButtonRow}>
-                <Pressable style={styles.button} onPress={submitEarlyExit} disabled={submitting}>
-                  <Text style={styles.buttonText}>{submitting ? 'Leaving…' : 'Confirm exit'}</Text>
-                </Pressable>
-                <Pressable style={styles.cancelExitButton} onPress={() => setShowExitReason(false)}>
-                  <Text style={styles.cancelExitButtonText}>Cancel</Text>
-                </Pressable>
-              </View>
+        {showExitReason ? (
+          <View style={styles.exitReasonCard}>
+            <Text style={styles.label}>Type this code exactly — no copy and paste</Text>
+            <Text style={styles.exitVerificationCode} selectable={false}>
+              {exitVerificationCode}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Retype the code above"
+              placeholderTextColor={COLORS.textFaint}
+              value={exitVerificationInput}
+              onChangeText={setExitVerificationInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              contextMenuHidden
+              maxLength={25}
+            />
+            <Text style={[styles.label, { marginTop: 12 }]}>
+              {isSynced ? `One line for ${partnerSession?.displayName} — why are you leaving?` : 'One line for why you\'re leaving early'}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. ran out of time"
+              placeholderTextColor={COLORS.textFaint}
+              value={exitReasonDraft}
+              onChangeText={setExitReasonDraft}
+              maxLength={80}
+            />
+            <View style={styles.exitReasonButtonRow}>
+              <Pressable
+                style={[
+                  styles.button,
+                  (exitVerificationInput !== exitVerificationCode || !exitReasonDraft.trim()) &&
+                    styles.buttonDisabled,
+                ]}
+                onPress={submitEarlyExit}
+                disabled={
+                  submitting ||
+                  exitVerificationInput !== exitVerificationCode ||
+                  !exitReasonDraft.trim()
+                }
+              >
+                <Text style={styles.buttonText}>{submitting ? 'Leaving…' : 'Confirm exit'}</Text>
+              </Pressable>
+              <Pressable style={styles.cancelExitButton} onPress={() => setShowExitReason(false)}>
+                <Text style={styles.cancelExitButtonText}>Cancel</Text>
+              </Pressable>
             </View>
-          ) : activeSession.syncReadyToUnlock ? (
-            <View style={styles.waitingIndicator}>
-              <Text style={styles.buttonText}>
-                ✅ Waiting for {partnerSession?.displayName}…
-              </Text>
-            </View>
-          ) : (
+          </View>
+        ) : isSynced && activeSession.syncReadyToUnlock ? (
+          <View style={styles.waitingIndicator}>
+            <Text style={styles.buttonText}>
+              ✅ Waiting for {partnerSession?.displayName}…
+            </Text>
+          </View>
+        ) : (() => {
+          const timing = timingSession ?? activeSession;
+          const hasMethod = !!timing.studyMethod && timing.studyMethod !== 'none';
+          const timeUp = !hasMethod || timing.methodPhase === 'done';
+
+          if (timeUp) {
+            return (
+              <>
+                <Pressable style={styles.button} onPress={startAnotherSession} disabled={submitting}>
+                  <Text style={styles.buttonText}>
+                    {submitting ? 'Starting…' : '🔁 Continue studying'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={styles.dangerButton}
+                  onPress={isSynced ? markReadyToUnlock : endSession}
+                  disabled={submitting}
+                >
+                  <Text style={styles.buttonText}>{submitting ? 'Ending…' : 'End session'}</Text>
+                </Pressable>
+              </>
+            );
+          }
+
+          return (
             <>
-              <Pressable style={styles.button} onPress={markReadyToUnlock} disabled={submitting}>
-                <Text style={styles.buttonText}>✅ I'm done studying</Text>
+              <Pressable style={[styles.dangerButton, styles.buttonDisabled]} disabled>
+                <Text style={styles.buttonText}>End session (unlocks when the timer ends)</Text>
               </Pressable>
               <Pressable
-                style={styles.dangerButton}
-                onPress={() => setShowExitReason(true)}
-                disabled={submitting}
+                style={[styles.dangerButton, remainingSyncExits <= 0 && styles.buttonDisabled]}
+                onPress={openExitReason}
+                disabled={submitting || remainingSyncExits <= 0}
               >
                 <Text style={styles.buttonText}>
-                  🚪 Leave early{remainingSyncExits > 0 ? ` (${remainingSyncExits} left this month)` : ''}
+                  🚪{' '}
+                  {remainingSyncExits > 0
+                    ? `Leave early (${remainingSyncExits} left this month)`
+                    : 'No early exits left this month'}
                 </Text>
               </Pressable>
             </>
-          )
-        ) : activeSession.methodPhase === 'done' ? (
-          <>
-            <Pressable style={styles.button} onPress={startAnotherSession} disabled={submitting}>
-              <Text style={styles.buttonText}>
-                {submitting ? 'Starting…' : '🔁 Start another session'}
-              </Text>
-            </Pressable>
-            <Pressable style={styles.dangerButton} onPress={endSession} disabled={submitting}>
-              <Text style={styles.buttonText}>{submitting ? 'Ending…' : '🚪 Exit cafe study'}</Text>
-            </Pressable>
-          </>
-        ) : (
-          <Pressable style={styles.dangerButton} onPress={endSession} disabled={submitting}>
-            <Text style={styles.buttonText}>{submitting ? 'Ending…' : 'End session'}</Text>
-          </Pressable>
-        )}
+          );
+        })()}
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -1046,11 +1241,32 @@ export default function CheckInScreen({ navigation, route }: any) {
       >
       <Text style={styles.heading}>Start a study session</Text>
 
+      <FeatureTip
+        id="study-session"
+        title="🎯 How study sessions work"
+        body="Pick a cafe, a subject, and a method — Pomodoro, 52/17, 90-min blocks, Timeboxing, or Freeform. Round-based methods ask how many rounds you want and show the total time up front. Once you start, your countdown runs on the mug timer and can optionally lock your phone with Screen Time."
+      />
+
       <Text style={styles.label}>Where are you studying?</Text>
       {selectedCafe ? (
-        <Pressable style={styles.selectedPill} onPress={() => setSelectedCafe(null)}>
-          <Text style={styles.selectedPillText}>{selectedCafe.name} ✕</Text>
-        </Pressable>
+        <>
+          <Pressable style={styles.selectedPill} onPress={() => setSelectedCafe(null)}>
+            <Text style={styles.selectedPillText}>{selectedCafe.name} ✕</Text>
+          </Pressable>
+          {selectedCafe.id !== HOME_LOCATION.id && (
+            <View style={styles.busynessPreviewCard}>
+              <Text style={styles.busynessPreviewLabel}>How busy is it here?</Text>
+              {selectedCafeBusyness ? (
+                <Text style={styles.busynessPreviewValue}>
+                  {busynessMeta(selectedCafeBusyness.busynessReport)!.emoji}{' '}
+                  {busynessMeta(selectedCafeBusyness.busynessReport)!.label}
+                </Text>
+              ) : (
+                <Text style={styles.busynessPreviewEmpty}>No reports yet — be the first!</Text>
+              )}
+            </View>
+          )}
+        </>
       ) : (
         <>
           <Pressable
@@ -1094,6 +1310,7 @@ export default function CheckInScreen({ navigation, route }: any) {
               </Pressable>
             )}
           />
+          <CafeRequestButton />
         </>
       )}
 
@@ -1186,6 +1403,30 @@ export default function CheckInScreen({ navigation, route }: any) {
           </View>
         </View>
       )}
+      {(studyMethod === 'pomodoro' ||
+        studyMethod === 'fiftyTwoSeventeen' ||
+        studyMethod === 'ultradian90') && (
+        <View style={styles.customMethodField}>
+          <Text style={styles.customMethodLabel}>How many rounds?</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="4"
+            placeholderTextColor={COLORS.textFaint}
+            keyboardType="number-pad"
+            value={plannedRounds}
+            onChangeText={setPlannedRounds}
+          />
+          <Text style={styles.hint}>
+            Estimated total:{' '}
+            <Text style={styles.estimatedTotalValue}>
+              {formatDuration(
+                estimateMethodTotalMinutes(studyMethod, Math.max(1, Number(plannedRounds) || 1)) *
+                  60000
+              )}
+            </Text>
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.label}>How locked in are you?</Text>
       <View style={styles.chipRow}>
@@ -1266,23 +1507,25 @@ export default function CheckInScreen({ navigation, route }: any) {
               </View>
             </>
           )}
-          {taggedFriends.length === 1 && (
-            <>
-              <Pressable style={styles.syncToggle} onPress={() => setWantSync((v) => !v)}>
-                <Text style={styles.syncToggleText}>
-                  {wantSync ? '☑' : '☐'} 🔗 Sync & lock this session with {taggedFriends[0].displayName}
-                </Text>
-              </Pressable>
-              {wantSync && (
-                <Text style={styles.hint}>
-                  {taggedFriends[0].displayName} needs to start their own session, tag you, and turn
-                  this on too — once you both do, you're synced. Leaving early needs a one-line reason
-                  they'll see.
-                </Text>
-              )}
-            </>
-          )}
         </>
+      )}
+
+      <FeatureTip
+        id="sync-sessions"
+        title="🔗 Studying together, in sync"
+        body="Turn this on and friends who see you studying can tap 'Sync' from the Friends tab to join. Once synced, your timers count down together, you pause/finish/unlock at the same moment, and leaving early needs a one-line reason they'll see."
+      />
+      <Pressable style={[styles.syncToggle, styles.syncToggleRow]} onPress={() => setAllowSync((v) => !v)}>
+        <Text style={styles.syncCheckbox}>{allowSync ? '☑' : '☐'}</Text>
+        <Image source={UI_ICONS.synced} style={styles.syncToggleIcon} resizeMode="contain" />
+        <Text style={styles.syncToggleText}>Allow friends to sync with this session</Text>
+      </Pressable>
+      {allowSync && (
+        <Text style={styles.hint}>
+          Friends who see you studying can tap "Sync" on the Friends tab to join and lock in
+          together — timers count down as one, and leaving early needs a one-line reason they'll
+          see.
+        </Text>
       )}
 
       <Text style={styles.label}>Check-in photo (optional)</Text>
@@ -1380,8 +1623,16 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
     letterSpacing: 0.3,
   },
-  syncToggle: { marginBottom: 8 },
-  syncToggleText: { fontSize: 13, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  estimatedTotalValue: {
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+    letterSpacing: 0.3,
+  },
+  syncToggle: { marginBottom: 8, paddingVertical: 4 },
+  syncToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  syncCheckbox: { fontSize: 24, color: COLORS.primary },
+  syncToggleIcon: { width: 20, height: 20 },
+  syncToggleText: { flex: 1, fontSize: 16, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -1417,6 +1668,34 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   selectedPillText: { fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  busynessPreviewCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+  },
+  busynessPreviewLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  busynessPreviewValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.4,
+  },
+  busynessPreviewEmpty: {
+    fontSize: 13,
+    color: COLORS.textFaint,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   subjectSwitchRow: { flexDirection: 'row', gap: 8, marginBottom: 16, alignItems: 'center' },
   subjectSwitchButton: {
@@ -1560,11 +1839,12 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
+  lockCardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  lockCardTitleIcon: { width: 18, height: 18 },
   lockCardTitle: {
     fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
-    marginBottom: 8,
     fontFamily: FONTS.semiBold,
     letterSpacing: 0.6,
   },
@@ -1574,6 +1854,8 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
   },
+  syncStatusTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  syncStatusTitleIcon: { width: 16, height: 16 },
   syncStatusTitle: { fontSize: 14, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
   syncStatusMeta: { fontSize: 12, color: COLORS.textMuted, marginTop: 4, fontFamily: FONTS.regular, letterSpacing: 0.3 },
   syncWaitingText: {
@@ -1604,6 +1886,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
+  },
+  exitVerificationCode: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    color: COLORS.danger,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 8,
+    paddingVertical: 10,
+    marginTop: 6,
+    marginBottom: 10,
   },
   exitReasonButtonRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   cancelExitButton: { paddingVertical: 14, paddingHorizontal: 8 },

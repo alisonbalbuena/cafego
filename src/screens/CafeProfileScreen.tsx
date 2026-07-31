@@ -24,12 +24,17 @@ import {
   CafeReview,
   MenuItem,
   MenuPhoto,
+  NOISE_LEVELS,
+  NoiseLevel,
+  OUTLETS_LEVELS,
+  OutletsLevel,
   RewardAccount,
 } from '../types';
 import { showAlert } from '../utils/alert';
 import { COLORS, FONTS } from '../theme';
 import { SHOW_ANNOUNCEMENTS, SHOW_LOYALTY_PROGRAM } from '../constants';
 import BackButton from '../components/BackButton';
+import FeatureTip from '../components/FeatureTip';
 
 const REVIEW_CATEGORIES: { key: keyof CafeReview; label: string }[] = [
   { key: 'ambienceRating', label: 'Ambience' },
@@ -62,6 +67,8 @@ export default function CafeProfileScreen({ route, navigation }: any) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [outlets, setOutlets] = useState<OutletsLevel | undefined>();
+  const [noise, setNoise] = useState<NoiseLevel | undefined>();
 
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, 'cafePrograms', cafeId), (snap) => {
@@ -122,6 +129,8 @@ export default function CafeProfileScreen({ route, navigation }: any) {
           setEnvironment(mine.environmentRating);
           setComment(mine.comment ?? '');
           setReviewPhotos(mine.photoUrls ?? []);
+          setOutlets(mine.outlets);
+          setNoise(mine.noise);
         }
       }
     });
@@ -151,6 +160,28 @@ export default function CafeProfileScreen({ route, navigation }: any) {
       drinksRating: sum('drinksRating'),
       pricesRating: sum('pricesRating'),
       environmentRating: sum('environmentRating'),
+    };
+  }, [reviews]);
+
+  const workspaceSummary = useMemo(() => {
+    const mostCommon = <T extends string>(values: (T | undefined)[]): T | null => {
+      const counts = new Map<T, number>();
+      values.forEach((v) => {
+        if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+      });
+      let best: T | null = null;
+      let bestCount = 0;
+      counts.forEach((count, value) => {
+        if (count > bestCount) {
+          best = value;
+          bestCount = count;
+        }
+      });
+      return best;
+    };
+    return {
+      outlets: mostCommon(reviews.map((r) => r.outlets)),
+      noise: mostCommon(reviews.map((r) => r.noise)),
     };
   }, [reviews]);
 
@@ -218,6 +249,8 @@ export default function CafeProfileScreen({ route, navigation }: any) {
         comment: comment.trim(),
         photoUrls: reviewPhotos,
         createdAt: Date.now(),
+        ...(outlets ? { outlets } : {}),
+        ...(noise ? { noise } : {}),
       });
       showAlert('Thanks!', 'Your review was saved.');
     } catch (err: any) {
@@ -237,6 +270,12 @@ export default function CafeProfileScreen({ route, navigation }: any) {
           <BackButton navigation={navigation} />
           <Text style={styles.heading}>{cafeName}</Text>
         </View>
+
+        <FeatureTip
+          id="cafe-profile"
+          title="☕ Everything about this cafe, in one place"
+          body="Check reviews for outlets, noise, and vibe before you go, browse the menu, see any loyalty rewards, and leave your own review after you've studied here."
+        />
 
         {SHOW_LOYALTY_PROGRAM && program && program.status !== 'pending' && (
           <View style={styles.progressCard}>
@@ -371,6 +410,20 @@ export default function CafeProfileScreen({ route, navigation }: any) {
                 </Text>
               </View>
             ))}
+            {(workspaceSummary.outlets || workspaceSummary.noise) && (
+              <View style={styles.workspaceSummaryRow}>
+                {workspaceSummary.outlets && (
+                  <Text style={styles.workspaceSummaryItem}>
+                    {OUTLETS_LEVELS.find((o) => o.value === workspaceSummary.outlets)?.label} outlets
+                  </Text>
+                )}
+                {workspaceSummary.noise && (
+                  <Text style={styles.workspaceSummaryItem}>
+                    {NOISE_LEVELS.find((n) => n.value === workspaceSummary.noise)?.label}
+                  </Text>
+                )}
+              </View>
+            )}
             <Text style={styles.reviewCount}>
               {reviews.length} review{reviews.length === 1 ? '' : 's'}
             </Text>
@@ -397,9 +450,42 @@ export default function CafeProfileScreen({ route, navigation }: any) {
             <Text style={styles.formLabel}>Studyability</Text>
             <StarRating value={environment} onChange={setEnvironment} />
           </View>
+
+          <Text style={styles.workspaceSectionTitle}>Workspace details (optional)</Text>
+
+          <Text style={styles.formLabel}>Outlets</Text>
+          <View style={styles.pillWrap}>
+            {OUTLETS_LEVELS.map((o) => (
+              <Pressable
+                key={o.value}
+                style={[styles.pill, outlets === o.value && styles.pillSelected]}
+                onPress={() => setOutlets(outlets === o.value ? undefined : o.value)}
+              >
+                <Text style={[styles.pillText, outlets === o.value && styles.pillTextSelected]}>
+                  {o.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.formLabel}>Noise</Text>
+          <View style={styles.pillWrap}>
+            {NOISE_LEVELS.map((n) => (
+              <Pressable
+                key={n.value}
+                style={[styles.pill, noise === n.value && styles.pillSelected]}
+                onPress={() => setNoise(noise === n.value ? undefined : n.value)}
+              >
+                <Text style={[styles.pillText, noise === n.value && styles.pillTextSelected]}>
+                  {n.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <TextInput
             style={styles.input}
-            placeholder="Optional written review…"
+            placeholder="Optional written review… best table, barista quiet hours, anything future remote workers should know."
             value={comment}
             onChangeText={setComment}
             multiline
@@ -539,6 +625,21 @@ const styles = StyleSheet.create({
   },
   viewerImage: { width: '100%', height: '80%' },
   averagesCard: { backgroundColor: COLORS.card, borderRadius: 12, padding: 16, marginBottom: 12 },
+  workspaceSummaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  workspaceSummaryItem: {
+    fontSize: 11,
+    fontFamily: FONTS.regular,
+    color: COLORS.textMuted,
+    letterSpacing: 0.2,
+  },
   averageRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, gap: 8 },
   averageLabel: { fontSize: 13, width: 90, fontFamily: FONTS.regular, letterSpacing: 0.4 },
   averageValue: { fontSize: 13, color: COLORS.textMuted, fontFamily: FONTS.regular, letterSpacing: 0.4 },
@@ -551,7 +652,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  formLabel: { fontSize: 13, color: COLORS.text, fontFamily: FONTS.regular, letterSpacing: 0.4 },
+  formLabel: {
+    fontSize: 13,
+    color: COLORS.text,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.4,
+    marginBottom: 6,
+    marginTop: 10,
+  },
+  workspaceSectionTitle: {
+    fontSize: 13,
+    fontFamily: FONTS.semiBold,
+    color: COLORS.textMuted,
+    letterSpacing: 0.5,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  pillWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  pillSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  pillText: { fontSize: 12, fontFamily: FONTS.regular, color: COLORS.text },
+  pillTextSelected: { color: COLORS.white, fontFamily: FONTS.semiBold },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,

@@ -27,24 +27,14 @@ import ManageMenuScreen from '../screens/ManageMenuScreen';
 import AdminScreen from '../screens/AdminScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import FriendProfileScreen from '../screens/FriendProfileScreen';
 import PetScreen from '../screens/PetScreen';
 import StudyPlansScreen from '../screens/StudyPlansScreen';
 import CreateStudyPlanScreen from '../screens/CreateStudyPlanScreen';
 import StudyPlanDetailScreen from '../screens/StudyPlanDetailScreen';
 import StudyInvitesScreen from '../screens/StudyInvitesScreen';
 import CreateStudyInviteScreen from '../screens/CreateStudyInviteScreen';
-import SwipeableTabScreen from '../components/SwipeableTabScreen';
 import { ADMIN_EMAIL, SHOW_ADMIN_TAB, SHOW_LOYALTY_PROGRAM } from '../constants';
-
-function withSwipe(Component: React.ComponentType<any>) {
-  return function SwipeWrapped(props: any) {
-    return (
-      <SwipeableTabScreen>
-        <Component {...props} />
-      </SwipeableTabScreen>
-    );
-  };
-}
 
 const AuthStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
@@ -68,10 +58,11 @@ function AuthNavigator() {
 function HomeNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
-      <HomeStack.Screen name="HomeMain" component={withSwipe(HomeScreen)} />
+      <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="CafeProfile" component={CafeProfileScreen} />
       <HomeStack.Screen name="AddMenuPhoto" component={AddMenuPhotoScreen} />
       <HomeStack.Screen name="Map" component={MapScreen} />
+      <HomeStack.Screen name="FriendProfile" component={FriendProfileScreen} />
     </HomeStack.Navigator>
   );
 }
@@ -79,9 +70,10 @@ function HomeNavigator() {
 function StudyNavigator() {
   return (
     <StudyStack.Navigator screenOptions={{ headerShown: false }}>
-      <StudyStack.Screen name="StudyMain" component={withSwipe(CheckInScreen)} />
+      <StudyStack.Screen name="StudyMain" component={CheckInScreen} />
       <StudyStack.Screen name="CafeProfile" component={CafeProfileScreen} />
       <StudyStack.Screen name="AddMenuPhoto" component={AddMenuPhotoScreen} />
+      <StudyStack.Screen name="FriendProfile" component={FriendProfileScreen} />
     </StudyStack.Navigator>
   );
 }
@@ -89,12 +81,13 @@ function StudyNavigator() {
 function FriendsNavigator() {
   return (
     <FriendsStack.Navigator screenOptions={{ headerShown: false }}>
-      <FriendsStack.Screen name="FriendsMain" component={withSwipe(FriendsScreen)} />
+      <FriendsStack.Screen name="FriendsMain" component={FriendsScreen} />
       <FriendsStack.Screen name="StudyPlans" component={StudyPlansScreen} />
       <FriendsStack.Screen name="CreateStudyPlan" component={CreateStudyPlanScreen} />
       <FriendsStack.Screen name="StudyPlanDetail" component={StudyPlanDetailScreen} />
       <FriendsStack.Screen name="StudyInvites" component={StudyInvitesScreen} />
       <FriendsStack.Screen name="CreateStudyInvite" component={CreateStudyInviteScreen} />
+      <FriendsStack.Screen name="FriendProfile" component={FriendProfileScreen} />
     </FriendsStack.Navigator>
   );
 }
@@ -102,7 +95,7 @@ function FriendsNavigator() {
 function RewardsNavigator() {
   return (
     <RewardsStack.Navigator screenOptions={{ headerShown: false }}>
-      <RewardsStack.Screen name="RewardsHome" component={withSwipe(RewardsScreen)} />
+      <RewardsStack.Screen name="RewardsHome" component={RewardsScreen} />
       <RewardsStack.Screen name="ClaimCafe" component={ClaimCafeScreen} />
     </RewardsStack.Navigator>
   );
@@ -111,7 +104,7 @@ function RewardsNavigator() {
 function MyCafeNavigator() {
   return (
     <MyCafeStack.Navigator screenOptions={{ headerShown: false }}>
-      <MyCafeStack.Screen name="MyCafeHome" component={withSwipe(MerchantDashboardScreen)} />
+      <MyCafeStack.Screen name="MyCafeHome" component={MerchantDashboardScreen} />
       <MyCafeStack.Screen name="ManageAnnouncements" component={ManageAnnouncementsScreen} />
       <MyCafeStack.Screen name="ManageMenu" component={ManageMenuScreen} />
     </MyCafeStack.Navigator>
@@ -121,8 +114,9 @@ function MyCafeNavigator() {
 function ProfileNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="ProfileHome" component={withSwipe(ProfileScreen)} />
+      <ProfileStack.Screen name="ProfileHome" component={ProfileScreen} />
       <ProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+      <ProfileStack.Screen name="FriendProfile" component={FriendProfileScreen} />
     </ProfileStack.Navigator>
   );
 }
@@ -173,9 +167,9 @@ function MainNavigator() {
       {SHOW_LOYALTY_PROGRAM && isMerchant && (
         <MainTabs.Screen name="My Cafe" component={MyCafeNavigator} />
       )}
-      <MainTabs.Screen name="Coffee" component={withSwipe(PetScreen)} />
+      <MainTabs.Screen name="Coffee" component={PetScreen} />
       {SHOW_ADMIN_TAB && isAdmin && (
-        <MainTabs.Screen name="Admin" component={withSwipe(AdminScreen)} />
+        <MainTabs.Screen name="Admin" component={AdminScreen} />
       )}
       <MainTabs.Screen name="Profile" component={ProfileNavigator} />
     </MainTabs.Navigator>

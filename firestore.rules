@@ -8,7 +8,8 @@ service cloud.firestore {
 
     match /users/{uid} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow update: if request.auth != null && (request.auth.uid == uid || isAdmin());
 
       match /friends/{friendId} {
         allow read: if request.auth != null && request.auth.uid == uid;
@@ -45,7 +46,19 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid;
-      allow update: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.uid ||
+        // Joining a friend's session from the Friends tab "Sync" button: the
+        // joiner (not the doc owner) sets syncPartnerUid on the host's doc.
+        // Only allowed when the host opted in, isn't already paired, and the
+        // write touches nothing but that one field.
+        (
+          resource.data.allowSync == true &&
+          !('syncPartnerUid' in resource.data) &&
+          request.resource.data.syncPartnerUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['syncPartnerUid'])
+        )
+      );
       allow delete: if request.auth != null &&
         request.auth.uid == resource.data.uid;
     }
@@ -84,6 +97,18 @@ service cloud.firestore {
          isAdmin());
     }
 
+    // "Can't find a cafe?" submissions from the check-in search — the
+    // submitter can read/create their own, only the admin can see the full
+    // queue, decide, or delete.
+    match /cafeRequests/{requestId} {
+      allow read: if request.auth != null &&
+        (resource.data.submittedByUid == request.auth.uid || isAdmin());
+      allow create: if request.auth != null &&
+        request.resource.data.submittedByUid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
     match /cafeReviews/{reviewId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null &&
@@ -109,9 +134,14 @@ service cloud.firestore {
 
     // Per-pair "synced sessions together" counters, keyed by the two
     // participants' sorted uids. Either participant can read/write their own pair.
+    // Membership is checked against the pairId itself ("uidA_uidB", sorted)
+    // rather than resource.data — the doc may not exist yet the first time
+    // two people complete a synced session, and resource.data on a
+    // non-existent doc throws in rules (evaluates to permission denied).
     match /pairStats/{pairId} {
-      allow read: if request.auth != null && request.auth.uid in resource.data.uids;
+      allow read: if request.auth != null && request.auth.uid in pairId.split('_');
       allow create, update: if request.auth != null &&
+        request.auth.uid in pairId.split('_') &&
         request.auth.uid in request.resource.data.uids;
     }
 

@@ -48,7 +48,7 @@ export default function LoginScreen({ navigation }: any) {
       <View style={styles.logoBubble}>
         <Ionicons name="cafe" size={32} color={COLORS.white} />
       </View>
-      <Text style={styles.title}>Study Cafe</Text>
+      <Text style={styles.title}>Focus Brew</Text>
       <Text style={styles.subtitle}>Find your friends. Find your cafe.</Text>
 
       <View style={styles.inputWrap}>

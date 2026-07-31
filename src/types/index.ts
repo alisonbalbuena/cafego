@@ -26,7 +26,8 @@ export interface UserProfile {
   username: string;
   bio?: string;
   email: string;
-  /** Self-declared at signup — the app requires 13+ (see AgeSlider). */
+  /** No longer collected at signup — retained only for accounts that already
+   * have a value stored from before the age gate was removed. */
   age?: number;
   createdAt: number;
   role: UserRole;
@@ -56,6 +57,16 @@ export interface UserProfile {
   calendarLogging?: boolean;
   screenTimeShieldEnabled?: boolean;
   syncedSessionCount?: number;
+  /** Ids of contextual first-use tips (see FeatureTip) the user has already
+   * dismissed, so each one only ever shows once per feature. */
+  seenTips?: string[];
+  /** Defaults to 'private' — these three gate what a friend/community member
+   * sees on this user's FriendProfileScreen. The users/{uid} doc is fully
+   * readable by any signed-in user (see firestore.rules), so this is enforced
+   * client-side only, the same trust model as the existing streakVisibility. */
+  budgetVisibility?: 'private' | 'public';
+  screenTimeVisibility?: 'private' | 'public';
+  spendingVisibility?: 'private' | 'public';
 }
 
 export type LoyaltyProgramType = 'points' | 'punchcard';
@@ -75,6 +86,18 @@ export interface CafeProgram {
   createdAt: number;
   menuImageUrls?: string[];
   onlineMenuUrl?: string;
+}
+
+/** A user-submitted "please add this cafe" request from the check-in search,
+ * for cafes the static/live list doesn't surface. Reviewed by the admin. */
+export interface CafeRequest {
+  id: string;
+  name: string;
+  address: string;
+  submittedByUid: string;
+  submittedByName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: number;
 }
 
 export interface RewardAccount {
@@ -118,6 +141,23 @@ export interface MenuPhoto {
   createdAt: number;
 }
 
+export type OutletsLevel = 'none' | 'some' | 'many';
+export type NoiseLevel = 'silent' | 'quiet' | 'moderate' | 'lively' | 'loud';
+
+export const OUTLETS_LEVELS: { value: OutletsLevel; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'some', label: 'Some' },
+  { value: 'many', label: 'Many' },
+];
+
+export const NOISE_LEVELS: { value: NoiseLevel; label: string }[] = [
+  { value: 'silent', label: 'Silent' },
+  { value: 'quiet', label: 'Quiet' },
+  { value: 'moderate', label: 'Moderate' },
+  { value: 'lively', label: 'Lively' },
+  { value: 'loud', label: 'Loud' },
+];
+
 export interface CafeReview {
   id: string;
   cafeId: string;
@@ -130,6 +170,9 @@ export interface CafeReview {
   comment: string;
   createdAt: number;
   photoUrls?: string[];
+  /** Remote-work workspace details — outlets/noise — all optional. */
+  outlets?: OutletsLevel;
+  noise?: NoiseLevel;
 }
 
 /** A group (or solo) accountability plan: everyone commits to a daily minimum
@@ -211,11 +254,12 @@ export function visibilityMeta(visibility?: SessionVisibility) {
   return VISIBILITY_LEVELS.find((v) => v.value === visibility) ?? VISIBILITY_LEVELS[1];
 }
 
-export type StudyIntensity = 'chilling' | 'working' | 'locked_in';
+export type StudyIntensity = 'chilling' | 'working' | 'laboring' | 'locked_in';
 
 export const STUDY_INTENSITIES: { value: StudyIntensity; label: string; emoji: string }[] = [
   { value: 'chilling', label: 'Chilling', emoji: '😌' },
   { value: 'working', label: 'Attempting to do work', emoji: '📝' },
+  { value: 'laboring', label: 'Laboring', emoji: '' },
   { value: 'locked_in', label: 'MEGA locked in', emoji: '🔒' },
 ];
 
@@ -362,9 +406,16 @@ export interface StudySession {
   methodBreakMin?: number;
   methodTotalMin?: number;
   methodBreakCount?: number;
+  /** Round-based presets (Pomodoro, 52/17, 90-min blocks) only — set from the
+   * pre-session "how many rounds?" picker. Once the round after a break
+   * would exceed this, the session finishes instead of starting another. */
+  methodRoundsPlanned?: number;
   methodPhase?: StudyMethodPhase;
   methodPhaseStartedAt?: number;
   methodRound?: number;
+  /** Opt-in flag set by the session's own owner — lets friends see a "Sync"
+   * button on this session from the Friends tab and join it. */
+  allowSync?: boolean;
   syncPartnerUid?: string;
   syncReadyToUnlock?: boolean;
   syncExitReason?: string;

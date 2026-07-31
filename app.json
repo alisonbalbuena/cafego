@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "expo-app",
+    "name": "Focus Brew",
     "slug": "expo-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -30,14 +30,14 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Study Cafe would like to add accepted study session invites to your calendar."
+          "calendarPermission": "Focus Brew would like to add accepted study session invites to your calendar."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Study Cafe would like to save your Coffee Buddy adventure photos.",
-          "savePhotosPermission": "Study Cafe would like to save your Coffee Buddy adventure photos.",
+          "photosPermission": "Focus Brew would like to save your Coffee Buddy adventure photos.",
+          "savePhotosPermission": "Focus Brew would like to save your Coffee Buddy adventure photos.",
           "isAccessMediaLocationEnabled": false
         }
       ],
@@ -45,7 +45,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "Study Cafe would like to access your contacts to help you find friends who already use the app."
+          "contactsPermission": "Focus Brew would like to access your contacts to help you find friends who already use the app."
         }
       ],
       [

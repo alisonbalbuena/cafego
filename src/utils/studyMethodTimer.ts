@@ -1,4 +1,4 @@
-import { StudySession, studyMethodMeta } from '../types';
+import { StudyMethod, StudySession, studyMethodMeta } from '../types';
 
 export function getPhaseDurationMs(session: StudySession): number {
   const phase = session.methodPhase ?? 'work';
@@ -60,18 +60,40 @@ export function getNextPhaseUpdate(session: StudySession, now: number): Record<s
     return { methodPhase: goesLong ? 'longBreak' : 'break', methodPhaseStartedAt: now };
   }
 
-  return { methodPhase: 'work', methodRound: round + 1, methodPhaseStartedAt: now };
+  const nextRound = round + 1;
+  if (session.methodRoundsPlanned != null && nextRound > session.methodRoundsPlanned) {
+    return { methodPhase: 'done' };
+  }
+  return { methodPhase: 'work', methodRound: nextRound, methodPhaseStartedAt: now };
+}
+
+/** Estimated total session length for a round-based preset (Pomodoro, 52/17,
+ * 90-min blocks) at a given round count — work every round, a break after
+ * each round except the last, substituting the long break on schedule.
+ * Shown before the session starts so the user knows what they're committing to. */
+export function estimateMethodTotalMinutes(method: StudyMethod, rounds: number): number {
+  const meta = studyMethodMeta(method);
+  if (meta.workMin == null || rounds < 1) return 0;
+  let total = 0;
+  for (let round = 1; round <= rounds; round++) {
+    total += meta.workMin;
+    if (round < rounds) {
+      const goesLong = !!meta.roundsBeforeLongBreak && round % meta.roundsBeforeLongBreak === 0;
+      total += goesLong ? meta.longBreakMin ?? meta.breakMin ?? 0 : meta.breakMin ?? 0;
+    }
+  }
+  return total;
 }
 
 const PHASE_LABELS: Record<string, string> = {
-  work: 'Focus',
+  work: 'Studying',
   break: 'Break',
   longBreak: 'Long break',
   done: 'Done',
 };
 
 export function getPhaseLabel(phase: string): string {
-  return PHASE_LABELS[phase] ?? 'Focus';
+  return PHASE_LABELS[phase] ?? 'Studying';
 }
 
 export function formatCountdown(ms: number): string {

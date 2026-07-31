@@ -24,6 +24,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
+import { useActiveSession } from '../hooks/useActiveSession';
+import { applyShield } from 'screen-time';
+import { startStudyTimerActivity } from 'study-timer-activity';
+import { getPhaseLabel } from '../utils/studyMethodTimer';
 import { FriendRequest, intensityMeta, isSessionPublic, StudySession, UserProfile } from '../types';
 import { showAlert } from '../utils/alert';
 import { formatDuration } from '../utils/format';
@@ -57,9 +61,11 @@ interface LeaderboardEntry {
 
 export default function FriendsScreen({ navigation }: any) {
   const { user, profile } = useAuth();
+  const { session: myActiveSession } = useActiveSession();
   const { refreshing, onRefresh } = useRefresh();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
+  const [syncingUid, setSyncingUid] = useState<string | null>(null);
   const [activeByUid, setActiveByUid] = useState<Record<string, StudySession>>({});
   const [leaderboardSessions, setLeaderboardSessions] = useState<StudySession[]>([]);
   const [usernameSearch, setUsernameSearch] = useState('');
@@ -279,7 +285,7 @@ export default function FriendsScreen({ navigation }: any) {
     }
   };
 
-  /** Matches the device's contacts (by email) against Study Cafe accounts so
+  /** Matches the device's contacts (by email) against Focus Brew accounts so
    * the user can add people they already know. Only ever reads emails —
    * nothing about the contact list itself is uploaded or stored. */
   const findFriendsFromContacts = async () => {
@@ -294,7 +300,7 @@ export default function FriendsScreen({ navigation }: any) {
       if (status !== 'granted') {
         showAlert(
           'Contacts access needed',
-          'Allow contacts access to find friends who already use Study Cafe — you can enable this later in Settings.'
+          'Allow contacts access to find friends who already use Focus Brew — you can enable this later in Settings.'
         );
         return;
       }
@@ -369,6 +375,81 @@ export default function FriendsScreen({ navigation }: any) {
     }
   };
 
+  const joinFriendSync = async (friend: Friend, hostSession: StudySession) => {
+    if (!user) return;
+    if (hostSession.syncPartnerUid) {
+      showAlert('Already synced', `${friend.displayName} is already synced with someone else.`);
+      return;
+    }
+    if (myActiveSession?.syncPartnerUid) {
+      showAlert('Already synced', "You're already synced with someone — end that session first.");
+      return;
+    }
+    setSyncingUid(friend.uid);
+    try {
+      if (myActiveSession) {
+        await updateDoc(doc(db, 'studySessions', myActiveSession.id), {
+          syncPartnerUid: hostSession.uid,
+        });
+        await updateDoc(doc(db, 'studySessions', hostSession.id), {
+          syncPartnerUid: user.uid,
+        });
+      } else {
+        const startedAt = Date.now();
+        const payload: Record<string, any> = {
+          uid: user.uid,
+          displayName: user.displayName ?? 'Someone',
+          cafeId: hostSession.cafeId,
+          cafeName: hostSession.cafeName,
+          cafeLat: hostSession.cafeLat,
+          cafeLng: hostSession.cafeLng,
+          subject: hostSession.subject,
+          startedAt,
+          endedAt: null,
+          visibility: hostSession.visibility,
+          intensity: hostSession.intensity,
+          studyMode: 'group',
+          subjectLog: [{ subject: hostSession.subject, startedAt, endedAt: null }],
+          syncPartnerUid: hostSession.uid,
+        };
+        if (hostSession.studyMethod && hostSession.studyMethod !== 'none') {
+          payload.studyMethod = hostSession.studyMethod;
+          payload.methodWorkMin = hostSession.methodWorkMin;
+          payload.methodBreakMin = hostSession.methodBreakMin;
+          if (hostSession.methodTotalMin != null) payload.methodTotalMin = hostSession.methodTotalMin;
+          if (hostSession.methodBreakCount != null) payload.methodBreakCount = hostSession.methodBreakCount;
+          if (hostSession.methodRoundsPlanned != null) {
+            payload.methodRoundsPlanned = hostSession.methodRoundsPlanned;
+          }
+          payload.methodPhase = 'work';
+          payload.methodPhaseStartedAt = startedAt;
+          payload.methodRound = 1;
+        }
+        await addDoc(collection(db, 'studySessions'), payload);
+        await updateDoc(doc(db, 'studySessions', hostSession.id), {
+          syncPartnerUid: user.uid,
+        });
+        if (profile?.screenTimeShieldEnabled) {
+          applyShield().catch(() => {});
+        }
+        if (payload.studyMethod) {
+          startStudyTimerActivity(hostSession.cafeName, {
+            subject: hostSession.subject,
+            phaseLabel: getPhaseLabel('work'),
+            phaseEndDate: startedAt + payload.methodWorkMin * 60000,
+            remainingSeconds: payload.methodWorkMin * 60,
+            paused: false,
+          }).catch(() => {});
+        }
+      }
+      navigation.navigate('Study');
+    } catch (err: any) {
+      showAlert('Could not sync', err.message);
+    } finally {
+      setSyncingUid(null);
+    }
+  };
+
   const renderBoard = (
     title: string,
     entries: LeaderboardEntry[],
@@ -384,8 +465,9 @@ export default function FriendsScreen({ navigation }: any) {
         <Text style={styles.emptyText}>No study sessions yet.</Text>
       ) : (
         entries.map((entry, i) => (
-          <View
+          <Pressable
             key={entry.uid}
+            onPress={() => navigation.navigate('FriendProfile', { uid: entry.uid })}
             style={[
               styles.leaderboardRow,
               i === entries.length - 1 && styles.leaderboardRowLast,
@@ -406,7 +488,7 @@ export default function FriendsScreen({ navigation }: any) {
             </View>
             <Text style={styles.leaderboardName}>{entry.displayName}</Text>
             <Text style={styles.leaderboardValue}>{valueFor(entry)}</Text>
-          </View>
+          </Pressable>
         ))
       )}
     </View>
@@ -460,18 +542,21 @@ export default function FriendsScreen({ navigation }: any) {
             </Pressable>
 
             <Pressable
-              style={styles.contactsButton}
+              style={[styles.contactsButton, styles.contactsButtonRow]}
               onPress={findFriendsFromContacts}
               disabled={checkingContacts}
             >
+              {!checkingContacts && (
+                <Image source={UI_ICONS.findFriends} style={styles.contactsButtonIcon} resizeMode="contain" />
+              )}
               <Text style={styles.contactsButtonText}>
-                {checkingContacts ? 'Checking contacts…' : '📇 Find friends from your contacts'}
+                {checkingContacts ? 'Checking contacts…' : 'Find friends from your contacts'}
               </Text>
             </Pressable>
 
             {contactsChecked && contactSuggestions.length === 0 && (
               <Text style={styles.contactsEmptyText}>
-                No one from your contacts is on Study Cafe yet.
+                No one from your contacts is on Focus Brew yet.
               </Text>
             )}
 
@@ -577,7 +662,12 @@ export default function FriendsScreen({ navigation }: any) {
           return (
             <View style={styles.friendRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.friendName}>{item.displayName}</Text>
+                <Pressable
+                  onPress={() => navigation.navigate('FriendProfile', { uid: item.uid })}
+                  hitSlop={4}
+                >
+                  <Text style={styles.friendName}>{item.displayName}</Text>
+                </Pressable>
                 {session ? (
                   <>
                     <Text style={styles.friendStatus}>
@@ -585,7 +675,10 @@ export default function FriendsScreen({ navigation }: any) {
                     </Text>
                     <View style={styles.intensityPill}>
                       <Text style={styles.intensityPillText}>
-                        {intensityMeta(session.intensity).emoji} {intensityMeta(session.intensity).label}
+                        {intensityMeta(session.intensity).emoji
+                          ? `${intensityMeta(session.intensity).emoji} `
+                          : ''}
+                        {intensityMeta(session.intensity).label}
                       </Text>
                     </View>
                   </>
@@ -599,9 +692,12 @@ export default function FriendsScreen({ navigation }: any) {
                   </Text>
                 )}
                 {together > 0 && (
-                  <Text style={styles.togetherText}>
-                    📚 Studied together {together}×
-                  </Text>
+                  <View style={styles.togetherRow}>
+                    <Image source={UI_ICONS.withFriends} style={styles.togetherIcon} resizeMode="contain" />
+                    <Text style={[styles.togetherText, { marginTop: 0 }]}>
+                      Studied together {together}×
+                    </Text>
+                  </View>
                 )}
                 {showStreak && (
                   <View style={styles.togetherRow}>
@@ -612,13 +708,30 @@ export default function FriendsScreen({ navigation }: any) {
                   </View>
                 )}
                 {(pairStats[item.uid] ?? 0) > 0 && (
-                  <Text style={styles.togetherText}>
-                    🔗 Synced {pairStats[item.uid]}× this week
-                  </Text>
+                  <View style={styles.togetherRow}>
+                    <Image source={UI_ICONS.synced} style={styles.togetherIcon} resizeMode="contain" />
+                    <Text style={[styles.togetherText, { marginTop: 0 }]}>
+                      Synced {pairStats[item.uid]}× this week
+                    </Text>
+                  </View>
                 )}
               </View>
               <View style={styles.friendActions}>
                 {session && <View style={styles.liveDot} />}
+                {session?.allowSync && !session?.syncPartnerUid && (
+                  <Pressable
+                    style={[styles.syncButton, styles.syncButtonRow]}
+                    disabled={syncingUid === item.uid}
+                    onPress={() => joinFriendSync(item, session)}
+                  >
+                    {syncingUid !== item.uid && (
+                      <Image source={UI_ICONS.synced} style={styles.syncButtonIcon} resizeMode="contain" />
+                    )}
+                    <Text style={styles.syncButtonText}>
+                      {syncingUid === item.uid ? 'Syncing…' : 'Sync'}
+                    </Text>
+                  </Pressable>
+                )}
                 <Pressable style={styles.nudgeButton} onPress={() => sendNudge(item)}>
                   <Text style={styles.nudgeButtonText}>👋 Nudge</Text>
                 </Pressable>
@@ -658,6 +771,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  contactsButtonRow: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  contactsButtonIcon: { width: 16, height: 16 },
   contactsButtonText: {
     fontSize: 13,
     fontFamily: FONTS.semiBold,
@@ -759,6 +874,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   nudgeButtonText: { fontSize: 12, fontWeight: '600', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  syncButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  },
+  syncButtonText: { fontSize: 12, fontWeight: '600', color: '#fff', fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
+  syncButtonRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  syncButtonIcon: { width: 14, height: 14 },
   intensityPill: {
     backgroundColor: COLORS.accentLight,
     borderRadius: 20,

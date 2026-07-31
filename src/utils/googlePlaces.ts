@@ -8,6 +8,34 @@ const FIELD_MASK =
 // through with an unrelated primary type (gas stations, fast food, etc).
 const CAFE_TYPES = new Set(['cafe', 'coffee_shop', 'coffee_roastery', 'coffee_stand']);
 
+// Big franchise coffee chains are filtered out of live search results — the
+// app is meant to surface local/independent cafes, same reasoning as the
+// static list not including them.
+const FRANCHISE_NAME_PATTERNS = [
+  'starbucks',
+  'dutch bros',
+  '7 brew',
+  'seven brew',
+  'dunkin',
+  "peet's coffee",
+  'peets coffee',
+  'tim hortons',
+  'costa coffee',
+  'caribou coffee',
+  "scooter's coffee",
+  'scooters coffee',
+  'biggby coffee',
+  "pj's coffee",
+  'the human bean',
+  'black rifle coffee',
+  "ziggi's coffee",
+];
+
+function isFranchise(name: string): boolean {
+  const lower = name.toLowerCase();
+  return FRANCHISE_NAME_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
 interface GooglePlace {
   id: string;
   displayName?: { text: string };
@@ -35,9 +63,11 @@ function toCafe(place: GooglePlace): Cafe | null {
   try {
     if (!place.location) return null;
     if (place.primaryType && !CAFE_TYPES.has(place.primaryType)) return null;
+    const name = place.displayName?.text ?? 'Unnamed cafe';
+    if (isFranchise(name)) return null;
     return {
       id: place.id,
-      name: place.displayName?.text ?? 'Unnamed cafe',
+      name,
       address: place.formattedAddress ?? '',
       lat: place.location.latitude,
       lng: place.location.longitude,

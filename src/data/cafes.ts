@@ -368,17 +368,6 @@ export const CAFES: Cafe[] = [
     "region": "Gwinnett"
   },
   {
-    "id": "cafe_33",
-    "name": "7 Brew Coffee",
-    "address": "1073 Scenic Hwy S, Lawrenceville, GA 30045",
-    "lat": 33.908291999999996,
-    "lng": -84.00356699999999,
-    "rating": 4.5,
-    "reviewCount": 90,
-    "neighborhood": "Lawrenceville",
-    "region": "Gwinnett"
-  },
-  {
     "id": "cafe_34",
     "name": "Sunflour Dessert & Coffee",
     "address": "1956 Duluth Hwy b105, Lawrenceville, GA 30043",

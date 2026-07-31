@@ -14,20 +14,31 @@ import {
   getSessionTotalRemainingMs,
 } from '../utils/studyMethodTimer';
 import { COLORS, RADIUS, FONTS } from '../theme';
+import MugTimerDisplay from './MugTimerDisplay';
 
 interface Props {
+  /** This device's own session — used for subject/uid and anything not
+   * shared with a sync partner. */
   session: StudySession;
   screenTimeShieldEnabled?: boolean;
+  /** For synced sessions: the *host's* session (whoever started first).
+   * Phase/pause/round/duration are all read from here instead of `session`,
+   * and the phase-transition write targets this session's id — so both
+   * partners' timers, shield locks, and Live Activities stay on one shared
+   * clock instead of drifting independently. Omit (or pass `session` itself)
+   * when not synced. */
+  timingSession?: StudySession;
 }
 
 const PHASE_META: Record<string, { label: string; emoji: string }> = {
-  work: { label: 'Focus', emoji: '🎯' },
+  work: { label: 'Studying', emoji: '' },
   break: { label: 'Break', emoji: '☕' },
   longBreak: { label: 'Long break', emoji: '🌿' },
   done: { label: "Time's up", emoji: '✅' },
 };
 
-export default function StudyMethodTimer({ session, screenTimeShieldEnabled }: Props) {
+export default function StudyMethodTimer({ session, screenTimeShieldEnabled, timingSession }: Props) {
+  const timing = timingSession ?? session;
   const [now, setNow] = useState(Date.now());
   const transitioningRef = useRef(false);
 
@@ -38,11 +49,11 @@ export default function StudyMethodTimer({ session, screenTimeShieldEnabled }: P
 
   useEffect(() => {
     transitioningRef.current = false;
-  }, [session.methodPhase, session.methodPhaseStartedAt]);
+  }, [timing.methodPhase, timing.methodPhaseStartedAt]);
 
   useEffect(() => {
     if (transitioningRef.current) return;
-    const update = getNextPhaseUpdate(session, now);
+    const update = getNextPhaseUpdate(timing, now);
     if (!update) return;
     transitioningRef.current = true;
     Vibration.vibrate([0, 400, 200, 400]);
@@ -55,10 +66,10 @@ export default function StudyMethodTimer({ session, screenTimeShieldEnabled }: P
       }
     }
     if (session.studyMethod && session.studyMethod !== 'none') {
-      const mergedSession = { ...session, ...update };
-      const newPhase = mergedSession.methodPhase ?? 'work';
+      const mergedTiming = { ...timing, ...update };
+      const newPhase = mergedTiming.methodPhase ?? 'work';
       const isDone = newPhase === 'done';
-      const phaseDurationMs = isDone ? 0 : getPhaseDurationMs(mergedSession);
+      const phaseDurationMs = isDone ? 0 : getPhaseDurationMs(mergedTiming);
       updateStudyTimerActivity({
         subject: session.subject,
         phaseLabel: getPhaseLabel(newPhase),
@@ -67,19 +78,30 @@ export default function StudyMethodTimer({ session, screenTimeShieldEnabled }: P
         paused: false,
       }).catch(() => {});
     }
-    updateDoc(doc(db, 'studySessions', session.id), update).catch(() => {
+    // The timing session's doc (the host's, when synced) — both partners'
+    // timers compute this identically off the same shared data, so writing
+    // from either device is redundant-but-harmless rather than a conflict.
+    updateDoc(doc(db, 'studySessions', timing.id), update).catch(() => {
       transitioningRef.current = false;
     });
-  }, [session, now, screenTimeShieldEnabled]);
+    // Mirror onto this device's own doc too when it's not the same one — if
+    // the joiner's own doc never got the phase/round updates, they'd jump
+    // backward to whatever was frozen at check-in the moment sync ends
+    // (partner leaves early, etc). Keeping both docs current the whole time
+    // means desyncing is just a no-op for continuity.
+    if (session.id !== timing.id) {
+      updateDoc(doc(db, 'studySessions', session.id), update).catch(() => {});
+    }
+  }, [timing, now, screenTimeShieldEnabled, session.id, session.studyMethod, session.subject]);
 
-  if (!session.studyMethod || session.studyMethod === 'none') return null;
+  if (!timing.studyMethod || timing.studyMethod === 'none') return null;
 
-  const meta = studyMethodMeta(session.studyMethod);
-  const phase = session.methodPhase ?? 'work';
+  const meta = studyMethodMeta(timing.studyMethod);
+  const phase = timing.methodPhase ?? 'work';
   const phaseMeta = PHASE_META[phase];
-  const remainingMs = getPhaseRemainingMs(session, now);
-  const totalRemainingMs = getSessionTotalRemainingMs(session, now);
-  const showRound = !!meta.roundsBeforeLongBreak || session.studyMethod === 'custom';
+  const remainingMs = getPhaseRemainingMs(timing, now);
+  const totalRemainingMs = getSessionTotalRemainingMs(timing, now);
+  const showRound = !!meta.roundsBeforeLongBreak || timing.studyMethod === 'custom';
 
   return (
     <View style={styles.card}>
@@ -94,10 +116,11 @@ export default function StudyMethodTimer({ session, screenTimeShieldEnabled }: P
       ) : (
         <>
           <Text style={styles.phaseLabel}>
-            {phaseMeta.emoji} {phaseMeta.label}
-            {showRound ? ` · Round ${session.methodRound ?? 1}` : ''}
+            {phaseMeta.emoji ? `${phaseMeta.emoji} ` : ''}
+            {phaseMeta.label}
+            {showRound ? ` · Round ${timing.methodRound ?? 1}` : ''}
           </Text>
-          <Text style={styles.countdown}>{formatCountdown(remainingMs)}</Text>
+          <MugTimerDisplay label={formatCountdown(remainingMs)} paused={!!timing.pausedAt} />
           {totalRemainingMs != null && (
             <Text style={styles.totalRemaining}>
               ⏳ {formatCountdown(totalRemainingMs)} left in session
@@ -122,7 +145,6 @@ const styles = StyleSheet.create({
   methodIcon: { width: 18, height: 18 },
   methodLabel: { fontSize: 13, fontWeight: '700', color: COLORS.primary, fontFamily: FONTS.semiBold, letterSpacing: 0.5 },
   phaseLabel: { fontSize: 13, color: COLORS.textMuted, marginTop: 6, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
-  countdown: { fontSize: 28, fontWeight: '700', color: COLORS.text, marginTop: 4, letterSpacing: 1, fontFamily: FONTS.semiBold },
   totalRemaining: { fontSize: 11, color: COLORS.textMuted, marginTop: 4, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.2 },
   doneText: { fontSize: 13, fontWeight: '600', color: COLORS.text, marginTop: 6, textAlign: 'center', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
 });

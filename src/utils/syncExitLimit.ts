@@ -1,8 +1,8 @@
 export const MAX_MONTHLY_SYNC_EXITS = 3;
 
 /** How many "leave early" exits from a synced session a user has left this
- * month. Soft-tracked only — leaving is never blocked, just counted so both
- * people can see the pattern rather than the app enforcing it. */
+ * month. Enforced — once this hits 0, CheckInScreen blocks the "Leave early"
+ * option outright until the next calendar month. */
 export function getRemainingSyncExits(
   count: number | undefined,
   storedMonthKey: string | undefined,

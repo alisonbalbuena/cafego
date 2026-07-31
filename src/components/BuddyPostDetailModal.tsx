@@ -11,6 +11,8 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { BuddyPost } from '../types';
 import { formatRelativeTime } from '../utils/format';
 import { showConfirm } from '../utils/alert';
@@ -41,6 +43,13 @@ export default function BuddyPostDetailModal({
   const comments = useBuddyPostComments(post?.id ?? null);
   const [commentText, setCommentText] = useState('');
   const [sending, setSending] = useState(false);
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
+
+  const openProfile = (uid: string) => {
+    onClose();
+    navigation.navigate('FriendProfile', { uid });
+  };
 
   if (!post) return null;
 
@@ -76,112 +85,106 @@ export default function BuddyPostDetailModal({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent>
-      <View style={styles.backdrop}>
-        <KeyboardAvoidingView
-          style={styles.sheetWrap}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={[styles.headerRow, { paddingTop: insets.top + 12 }]}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {post.buddyName}
+          </Text>
+          <Pressable onPress={onClose} hitSlop={10}>
+            <Text style={styles.closeText}>✕</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.sheet}>
-            <View style={styles.headerRow}>
-              <Text style={styles.headerTitle} numberOfLines={1}>
-                {post.buddyName}
-              </Text>
-              <Pressable onPress={onClose} hitSlop={10}>
-                <Text style={styles.closeText}>✕</Text>
+          <Image source={{ uri: post.imageUrl }} style={styles.photo} resizeMode="cover" />
+
+          <View style={styles.metaRow}>
+            <View style={{ flex: 1 }}>
+              <Pressable onPress={() => openProfile(post.uid)} hitSlop={4}>
+                <Text style={styles.authorText}>{post.displayName}</Text>
               </Pressable>
+              <Text style={styles.metaText}>
+                {place ? `📍 ${place} · ` : ''}
+                {formatRelativeTime(post.createdAt)}
+              </Text>
             </View>
+            {canDelete && (
+              <Pressable onPress={handleDeletePost} hitSlop={8}>
+                <Text style={styles.discardText}>Discard</Text>
+              </Pressable>
+            )}
+          </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-              <Image source={{ uri: post.imageUrl }} style={styles.photo} resizeMode="cover" />
+          {!!post.caption && <Text style={styles.captionText}>{post.caption}</Text>}
 
-              <View style={styles.metaRow}>
+          <View style={styles.commentsHeaderRow}>
+            <Text style={styles.commentsHeading}>
+              Comments{comments.length > 0 ? ` (${comments.length})` : ''}
+            </Text>
+          </View>
+
+          {comments.length === 0 ? (
+            <Text style={styles.emptyComments}>No comments yet — be the first!</Text>
+          ) : (
+            comments.map((c) => (
+              <View key={c.id} style={styles.commentRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.authorText}>{post.displayName}</Text>
-                  <Text style={styles.metaText}>
-                    {place ? `📍 ${place} · ` : ''}
-                    {formatRelativeTime(post.createdAt)}
-                  </Text>
+                  <Pressable onPress={() => openProfile(c.uid)} hitSlop={4}>
+                    <Text style={styles.commentAuthor}>{c.displayName}</Text>
+                  </Pressable>
+                  <Text style={styles.commentText}>{c.text}</Text>
+                  <Text style={styles.commentMeta}>{formatRelativeTime(c.createdAt)}</Text>
                 </View>
-                {canDelete && (
-                  <Pressable onPress={handleDeletePost} hitSlop={8}>
-                    <Text style={styles.discardText}>Discard</Text>
+                {currentUid === c.uid && (
+                  <Pressable onPress={() => handleDeleteComment(c.id)} hitSlop={8}>
+                    <Text style={styles.commentDelete}>✕</Text>
                   </Pressable>
                 )}
               </View>
+            ))
+          )}
+        </ScrollView>
 
-              {!!post.caption && <Text style={styles.captionText}>{post.caption}</Text>}
-
-              <View style={styles.commentsHeaderRow}>
-                <Text style={styles.commentsHeading}>
-                  Comments{comments.length > 0 ? ` (${comments.length})` : ''}
-                </Text>
-              </View>
-
-              {comments.length === 0 ? (
-                <Text style={styles.emptyComments}>No comments yet — be the first!</Text>
-              ) : (
-                comments.map((c) => (
-                  <View key={c.id} style={styles.commentRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.commentAuthor}>{c.displayName}</Text>
-                      <Text style={styles.commentText}>{c.text}</Text>
-                      <Text style={styles.commentMeta}>{formatRelativeTime(c.createdAt)}</Text>
-                    </View>
-                    {currentUid === c.uid && (
-                      <Pressable onPress={() => handleDeleteComment(c.id)} hitSlop={8}>
-                        <Text style={styles.commentDelete}>✕</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                ))
-              )}
-            </ScrollView>
-
-            {currentUid && (
-              <View style={styles.commentInputRow}>
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder="Add a comment…"
-                  placeholderTextColor={COLORS.textFaint}
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  multiline
-                />
-                <Pressable
-                  style={[styles.sendButton, (!commentText.trim() || sending) && styles.sendButtonDisabled]}
-                  onPress={handleSendComment}
-                  disabled={!commentText.trim() || sending}
-                >
-                  <Text style={styles.sendButtonText}>Send</Text>
-                </Pressable>
-              </View>
-            )}
+        {currentUid && (
+          <View style={[styles.commentInputRow, { paddingBottom: Math.max(12, insets.bottom) }]}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment…"
+              placeholderTextColor={COLORS.textFaint}
+              value={commentText}
+              onChangeText={setCommentText}
+              multiline
+            />
+            <Pressable
+              style={[styles.sendButton, (!commentText.trim() || sending) && styles.sendButtonDisabled]}
+              onPress={handleSendComment}
+              disabled={!commentText.trim() || sending}
+            >
+              <Text style={styles.sendButtonText}>Send</Text>
+            </Pressable>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+        )}
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheetWrap: { maxHeight: '88%' },
-  sheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderWidth: 3,
-    borderColor: COLORS.primary,
-    borderBottomWidth: 0,
-    overflow: 'hidden',
-  },
+  container: { flex: 1, backgroundColor: COLORS.surface },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },

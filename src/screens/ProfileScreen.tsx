@@ -2,25 +2,37 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   Pressable,
   Image,
   FlatList,
   Modal,
   RefreshControl,
   ScrollView,
+  Switch,
   StyleSheet,
+  Platform,
 } from 'react-native';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../firebase/config';
 import { useAuth } from '../hooks/useAuth';
 import { StudySession } from '../types';
 import { formatDuration } from '../utils/format';
 import { getAllNighterTitle } from '../utils/allNighter';
+import { showAlert } from '../utils/alert';
+import { ensureCalendarPermission } from '../utils/calendarSync';
+import {
+  hasSelection,
+  isScreenTimeSupported,
+  presentActivityPicker,
+  requestAuthorization,
+} from 'screen-time';
 import { COLORS, RADIUS, FONTS } from '../theme';
 import SpendingSection from '../components/SpendingSection';
 import SessionHistorySection from '../components/SessionHistorySection';
 import BuddyAdventureStrip from '../components/BuddyAdventureStrip';
+import FeatureTip from '../components/FeatureTip';
 import { useBuddyPosts } from '../hooks/useBuddyPosts';
 import { useRefresh } from '../hooks/useRefresh';
 import { UI_ICONS } from '../data/uiIcons';
@@ -39,6 +51,136 @@ export default function ProfileScreen({ navigation }: any) {
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const buddyPosts = useBuddyPosts(user ? [user.uid] : []);
+  const [budgetAmount, setBudgetAmount] = useState(
+    profile?.budgetAmount != null ? String(profile.budgetAmount) : ''
+  );
+  const [budgetPeriod, setBudgetPeriod] = useState<'weekly' | 'monthly'>(
+    profile?.budgetPeriod ?? 'weekly'
+  );
+  const [calendarLogging, setCalendarLogging] = useState(profile?.calendarLogging ?? false);
+  const [screenTimeShieldEnabled, setScreenTimeShieldEnabled] = useState(
+    profile?.screenTimeShieldEnabled ?? false
+  );
+  const [budgetVisibility, setBudgetVisibility] = useState<'private' | 'public'>(
+    profile?.budgetVisibility ?? 'private'
+  );
+  const [screenTimeVisibility, setScreenTimeVisibility] = useState<'private' | 'public'>(
+    profile?.screenTimeVisibility ?? 'private'
+  );
+  const [spendingVisibility, setSpendingVisibility] = useState<'private' | 'public'>(
+    profile?.spendingVisibility ?? 'private'
+  );
+
+  const toggleFieldVisibility = async (
+    field: 'budgetVisibility' | 'screenTimeVisibility' | 'spendingVisibility',
+    setter: (v: 'private' | 'public') => void,
+    makePublic: boolean
+  ) => {
+    if (!user) return;
+    const value = makePublic ? 'public' : 'private';
+    setter(value);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { [field]: value });
+    } catch (err: any) {
+      setter(makePublic ? 'private' : 'public');
+      showAlert('Could not update setting', err.message);
+    }
+  };
+
+  const savePeriod = async (next: 'weekly' | 'monthly') => {
+    if (!user) return;
+    setBudgetPeriod(next);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { budgetPeriod: next });
+    } catch (err: any) {
+      showAlert('Could not update setting', err.message);
+    }
+  };
+
+  const saveBudgetAmount = async () => {
+    if (!user) return;
+    const parsed = Number(budgetAmount);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        budgetAmount: budgetAmount.trim() && parsed > 0 ? parsed : null,
+      });
+    } catch (err: any) {
+      showAlert('Could not update setting', err.message);
+    }
+  };
+
+  // Saved immediately (not behind a Save button) because enabling has to run
+  // the calendar permission prompt right then — that's the "connect" step.
+  const toggleCalendarLogging = async (next: boolean) => {
+    if (!user) return;
+    if (next) {
+      if (Platform.OS === 'web') {
+        showAlert('Not available on web', 'Calendar logging works from the mobile app.');
+        return;
+      }
+      const granted = await ensureCalendarPermission();
+      if (!granted) {
+        showAlert(
+          'Calendar access needed',
+          'Allow calendar access so finished study sessions can be added automatically.'
+        );
+        return;
+      }
+    }
+    setCalendarLogging(next);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { calendarLogging: next });
+    } catch (err: any) {
+      setCalendarLogging(!next);
+      showAlert('Could not update setting', err.message);
+    }
+  };
+
+  // Enabling has to run the Screen Time consent prompt and (the first time)
+  // the app picker right then — that's the "connect" step, same idea as
+  // calendar logging above.
+  const toggleScreenTimeShield = async (next: boolean) => {
+    if (!user) return;
+    if (next) {
+      if (!isScreenTimeSupported()) {
+        showAlert(
+          'Not available here',
+          'Screen Time shielding needs the iOS build with Screen Time enabled — not Expo Go or web.'
+        );
+        return;
+      }
+      const authorized = await requestAuthorization();
+      if (!authorized) {
+        showAlert(
+          'Screen Time access needed',
+          'Allow Screen Time access so distracting apps can be shielded during your sessions.'
+        );
+        return;
+      }
+      if (!hasSelection()) {
+        const picked = await presentActivityPicker();
+        if (!picked) return;
+      }
+    }
+    setScreenTimeShieldEnabled(next);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), { screenTimeShieldEnabled: next });
+    } catch (err: any) {
+      setScreenTimeShieldEnabled(!next);
+      showAlert('Could not update setting', err.message);
+    }
+  };
+
+  const chooseShieldedApps = async () => {
+    if (!isScreenTimeSupported()) {
+      showAlert(
+        'Not available here',
+        'Screen Time shielding needs the iOS build with Screen Time enabled — not Expo Go or web.'
+      );
+      return;
+    }
+    await presentActivityPicker();
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -143,15 +285,136 @@ export default function ProfileScreen({ navigation }: any) {
         </View>
       </View>
 
+      <FeatureTip
+        id="spending-budget"
+        title="💰 Keep an eye on cafe spending"
+        body="Set a weekly or monthly budget and we'll give you a friendly heads-up when you're over it after a session — nothing is blocked, it's just a nudge to help you notice."
+        highlight
+      />
+      <View style={styles.moreSection}>
+        <View style={styles.moreSectionTitleRow}>
+          <Image source={UI_ICONS.spending} style={styles.moreSectionTitleIcon} resizeMode="contain" />
+          <Text style={styles.moreSectionTitle}>Spending budget</Text>
+        </View>
+        <View style={styles.periodRow}>
+          <Pressable
+            style={[styles.periodChip, budgetPeriod === 'weekly' && styles.periodChipSelected]}
+            onPress={() => savePeriod('weekly')}
+          >
+            <Text
+              style={[
+                styles.periodChipText,
+                budgetPeriod === 'weekly' && styles.periodChipTextSelected,
+              ]}
+            >
+              Weekly
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.periodChip, budgetPeriod === 'monthly' && styles.periodChipSelected]}
+            onPress={() => savePeriod('monthly')}
+          >
+            <Text
+              style={[
+                styles.periodChipText,
+                budgetPeriod === 'monthly' && styles.periodChipTextSelected,
+              ]}
+            >
+              Monthly
+            </Text>
+          </Pressable>
+        </View>
+        <TextInput
+          style={styles.budgetInput}
+          value={budgetAmount}
+          onChangeText={setBudgetAmount}
+          onBlur={saveBudgetAmount}
+          keyboardType="decimal-pad"
+          placeholder="e.g. 40"
+          placeholderTextColor={COLORS.textFaint}
+        />
+        <Text style={styles.moreSectionHint}>
+          We'll show a friendly reminder of how much you have left when you start a session —
+          just a nudge, never a limit.
+        </Text>
+        <View style={styles.visibilityRow}>
+          <Text style={styles.visibilityLabel}>Visible to friends</Text>
+          <Switch
+            value={budgetVisibility === 'public'}
+            onValueChange={(v) => toggleFieldVisibility('budgetVisibility', setBudgetVisibility, v)}
+            trackColor={{ true: COLORS.primary }}
+          />
+        </View>
+      </View>
+
+      <FeatureTip
+        id="screen-time"
+        title="🔒 Stay off your phone while you study"
+        body="Turn this on once, pick the apps that distract you, and they'll be shielded automatically for the whole time you're checked into a session — no manual locking needed. Requires a real iOS device, not the Simulator."
+        highlight
+      />
+      {!screenTimeShieldEnabled && (
+        <View style={styles.screenTimeReminderBanner}>
+          <Text style={styles.screenTimeReminderText}>
+            ⚠️ MAKE SURE TO TOGGLE ON AND CHOOSE APPS TO RESTRICT
+          </Text>
+        </View>
+      )}
+      <View style={styles.moreSection}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchTextWrap}>
+            <View style={styles.moreSectionTitleRow}>
+              <Image source={UI_ICONS.screenTime} style={styles.moreSectionTitleIcon} resizeMode="contain" />
+              <Text style={styles.moreSectionTitle}>Screen time</Text>
+            </View>
+            <Text style={styles.moreSectionHint}>
+              Pick apps that tempt you away — they'll be blocked with Screen Time's shield
+              while you're checked in, and unlocked the moment you end the session.
+            </Text>
+          </View>
+          <Switch
+            value={screenTimeShieldEnabled}
+            onValueChange={toggleScreenTimeShield}
+            trackColor={{ true: COLORS.primary }}
+          />
+        </View>
+        {screenTimeShieldEnabled && (
+          <Pressable style={styles.secondaryButton} onPress={chooseShieldedApps}>
+            <Text style={styles.secondaryButtonText}>Change shielded apps</Text>
+          </Pressable>
+        )}
+        <View style={styles.visibilityRow}>
+          <Text style={styles.visibilityLabel}>Visible to friends</Text>
+          <Switch
+            value={screenTimeVisibility === 'public'}
+            onValueChange={(v) =>
+              toggleFieldVisibility('screenTimeVisibility', setScreenTimeVisibility, v)
+            }
+            trackColor={{ true: COLORS.primary }}
+          />
+        </View>
+      </View>
+
       <View style={styles.spendingHeaderRow}>
         <Image source={UI_ICONS.spending} style={styles.spendingHeaderIcon} resizeMode="contain" />
         <Text style={styles.sectionTitle}>Spending</Text>
+      </View>
+      <View style={styles.visibilityRow}>
+        <Text style={styles.visibilityLabel}>Visible to friends</Text>
+        <Switch
+          value={spendingVisibility === 'public'}
+          onValueChange={(v) => toggleFieldVisibility('spendingVisibility', setSpendingVisibility, v)}
+          trackColor={{ true: COLORS.primary }}
+        />
       </View>
       <View style={{ marginBottom: 24 }}>
         <SpendingSection />
       </View>
 
-      <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>🎒 Buddy adventures</Text>
+      <View style={styles.spendingHeaderRow}>
+        <Image source={UI_ICONS.backpack} style={styles.spendingHeaderIcon} resizeMode="contain" />
+        <Text style={styles.sectionTitle}>Buddy adventures</Text>
+      </View>
       <View style={{ marginBottom: 24 }}>
         <BuddyAdventureStrip
           posts={buddyPosts}
@@ -187,6 +450,23 @@ export default function ProfileScreen({ navigation }: any) {
             </View>
             <Text style={styles.moreSectionSubtext}>Edit profile</Text>
           </Pressable>
+
+          <View style={styles.moreSection}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchTextWrap}>
+                <Text style={styles.moreSectionTitle}>📅 Log sessions to calendar</Text>
+                <Text style={styles.moreSectionHint}>
+                  Finished study sessions are added to your device calendar automatically — if it
+                  syncs with Google Calendar, they'll show up there too.
+                </Text>
+              </View>
+              <Switch
+                value={calendarLogging}
+                onValueChange={toggleCalendarLogging}
+                trackColor={{ true: COLORS.primary }}
+              />
+            </View>
+          </View>
 
           <View style={styles.moreSection}>
             <Text style={styles.moreSectionTitle}>☕ Time by cafe</Text>
@@ -236,9 +516,15 @@ export default function ProfileScreen({ navigation }: any) {
             keyExtractor={(f) => f.uid}
             ListEmptyComponent={<Text style={styles.emptyText}>No friends yet.</Text>}
             renderItem={({ item }) => (
-              <View style={styles.friendRow}>
+              <Pressable
+                style={styles.friendRow}
+                onPress={() => {
+                  setShowFriends(false);
+                  navigation.navigate('FriendProfile', { uid: item.uid });
+                }}
+              >
                 <Text style={styles.friendName}>{item.displayName}</Text>
-              </View>
+              </Pressable>
             )}
           />
           <Pressable style={styles.closeButton} onPress={() => setShowFriends(false)}>
@@ -351,7 +637,26 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 24,
   },
+  screenTimeReminderBanner: {
+    backgroundColor: '#ffd54a',
+    borderWidth: 2,
+    borderColor: '#c99a1f',
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  screenTimeReminderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#3d2b1f',
+    textAlign: 'center',
+    fontFamily: FONTS.bold,
+    letterSpacing: 0.4,
+  },
   moreSectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  moreSectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  moreSectionTitleIcon: { width: 18, height: 18 },
   moreSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -368,6 +673,61 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   moreSectionChevron: { fontSize: 22, color: COLORS.textFaint, fontFamily: FONTS.regular },
+  moreSectionHint: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    lineHeight: 17,
+    fontFamily: FONTS.regular,
+    letterSpacing: 0.3,
+  },
+  periodRow: { flexDirection: 'row', gap: 8, marginTop: 8, marginBottom: 8 },
+  periodChip: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  periodChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  periodChipText: { fontSize: 13, color: COLORS.text, fontWeight: '600', fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
+  periodChipTextSelected: { color: '#fff' },
+  budgetInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    marginBottom: 8,
+    fontFamily: FONTS.regular,
+    color: COLORS.text,
+  },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  switchTextWrap: { flex: 1 },
+  visibilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  visibilityLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    fontFamily: FONTS.semiBold,
+    letterSpacing: 0.3,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  secondaryButtonText: { color: COLORS.text, fontWeight: '600', fontSize: 13, fontFamily: FONTS.semiBold, letterSpacing: 0.4 },
   friendRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.borderLight },
   friendName: { fontSize: 16, fontWeight: '500', fontFamily: FONTS.medium, letterSpacing: 0.4 },
   closeButton: { alignItems: 'center', padding: 14, marginTop: 12 },

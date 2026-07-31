@@ -1,6 +1,7 @@
 import { DAY_MS, weekKey } from './dateHelpers';
 
-export const COINS_PER_HOUR = 1;
+// 1 coin every 2 minutes of active studying = 30 coins/hour.
+export const COINS_PER_HOUR = 30;
 export const WEEKLY_STREAK_MULTIPLIER_STEP = 0.2;
 const WEEK_MS = DAY_MS * 7;
 

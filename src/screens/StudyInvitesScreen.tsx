@@ -36,7 +36,7 @@ export default function StudyInvitesScreen({ navigation }: any) {
       `Study with ${otherName}${invite.subject ? ` — ${invite.subject}` : ''}`,
       new Date(invite.scheduledAt),
       new Date(invite.scheduledAt + invite.durationMin * 60000),
-      'Scheduled via Study Cafe'
+      'Scheduled via Focus Brew'
     ).catch(() => {});
   };
 

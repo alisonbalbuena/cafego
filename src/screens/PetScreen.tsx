@@ -7,7 +7,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -35,6 +35,7 @@ import { randomBuddyPose } from '../data/buddyPoses';
 import BuddyPhotoEditor, { BuddyPhotoResult } from '../components/BuddyPhotoEditor';
 import { postBuddyAdventure } from '../utils/buddyPosts';
 import { showAlert } from '../utils/alert';
+import { withAuthRetry } from '../utils/firestoreRetry';
 import { useRefresh } from '../hooks/useRefresh';
 import { getCombinedMultiplier } from '../utils/streakCoins';
 import {
@@ -120,23 +121,23 @@ export default function PetScreen() {
   const freeRenamesLeft = Math.max(0, FREE_NAME_CHANGES - nameChangesUsed);
 
   const ownedBackgrounds = useMemo(
-    () => new Set(['default', ...(profile?.petBackgroundsOwned ?? [])]),
+    () => new Set(profile?.petBackgroundsOwned ?? []),
     [profile?.petBackgroundsOwned]
   );
   const activeBackground = getPetBackground(profile?.petBackground);
 
-  const visibleFriends = useMemo(
-    () =>
+  const visibleFriends = useMemo(() => {
+    const filtered =
       categoryFilter === 'all'
         ? COFFEE_FRIENDS
-        : COFFEE_FRIENDS.filter((f) => f.category === categoryFilter),
-    [categoryFilter]
-  );
+        : COFFEE_FRIENDS.filter((f) => f.category === categoryFilter);
+    return [...filtered].sort((a, b) => a.cost - b.cost);
+  }, [categoryFilter]);
 
   const setStreakVisibility = async (visibility: 'private' | 'friends') => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'users', user.uid), { streakVisibility: visibility });
+      await withAuthRetry(() => updateDoc(doc(db, 'users', user.uid), { streakVisibility: visibility }));
     } catch (err: any) {
       showAlert('Could not update streak visibility', err.message);
     }
@@ -161,11 +162,13 @@ export default function PetScreen() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        buddyName: clean,
-        coffeeNameChangesUsed: increment(1),
-        ...(usingFreeRename ? {} : { petCoins: increment(-RENAME_COST_COINS) }),
-      });
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'users', user.uid), {
+          buddyName: clean,
+          coffeeNameChangesUsed: increment(1),
+          ...(usingFreeRename ? {} : { petCoins: increment(-RENAME_COST_COINS) }),
+        })
+      );
     } catch (err: any) {
       showAlert('Could not rename', err.message);
     }
@@ -178,12 +181,14 @@ export default function PetScreen() {
     if (!owned && coins < friend.cost) return;
     setPurchasingId(friend.id);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        ...(owned
-          ? {}
-          : { petCoins: increment(-friend.cost), unlockedCoffeeFriends: arrayUnion(friend.id) }),
-        activeCoffeeFriend: friend.id,
-      });
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'users', user.uid), {
+          ...(owned
+            ? {}
+            : { petCoins: increment(-friend.cost), unlockedCoffeeFriends: arrayUnion(friend.id) }),
+          activeCoffeeFriend: friend.id,
+        })
+      );
     } catch (err: any) {
       showAlert('Could not update coffee friend', err.message);
     } finally {
@@ -198,12 +203,14 @@ export default function PetScreen() {
     setPurchasingId(expr.id);
     try {
       const equipping = activeExpression?.id !== expr.id;
-      await updateDoc(doc(db, 'users', user.uid), {
-        ...(owned
-          ? {}
-          : { petCoins: increment(-expr.cost), unlockedExpressions: arrayUnion(expr.id) }),
-        activeExpression: equipping ? expr.id : null,
-      });
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'users', user.uid), {
+          ...(owned
+            ? {}
+            : { petCoins: increment(-expr.cost), unlockedExpressions: arrayUnion(expr.id) }),
+          activeExpression: equipping ? expr.id : null,
+        })
+      );
     } catch (err: any) {
       showAlert('Could not update expression', err.message);
     } finally {
@@ -217,10 +224,12 @@ export default function PetScreen() {
     if (!owned && coins < bg.cost) return;
     setPurchasingId(bg.id);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        ...(owned ? {} : { petCoins: increment(-bg.cost), petBackgroundsOwned: arrayUnion(bg.id) }),
-        petBackground: bg.id,
-      });
+      await withAuthRetry(() =>
+        updateDoc(doc(db, 'users', user.uid), {
+          ...(owned ? {} : { petCoins: increment(-bg.cost), petBackgroundsOwned: arrayUnion(bg.id) }),
+          petBackground: bg.id,
+        })
+      );
     } catch (err: any) {
       showAlert('Could not update cafe background', err.message);
     } finally {
@@ -291,13 +300,52 @@ export default function PetScreen() {
 
   return (
     <>
-    <ScrollView
+    <FlatList
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />
       }
-    >
+      data={visibleFriends}
+      keyExtractor={(friend) => friend.id}
+      numColumns={3}
+      columnWrapperStyle={styles.itemGridRow}
+      renderItem={({ item: friend }) => {
+        const owned = unlockedFriends.has(friend.id);
+        const affordable = owned || (!friend.specialUnlockOnly && coins >= friend.cost);
+        const active = activeFriend.id === friend.id;
+        return (
+          <Pressable
+            style={[styles.friendCard, !affordable && styles.itemCardDisabled, active && styles.itemCardSelected]}
+            onPress={() => selectOrUnlockFriend(friend)}
+            disabled={!affordable || active || purchasingId === friend.id}
+          >
+            <Image
+              source={friend.images.regular}
+              style={[styles.friendImage, !owned && styles.friendImageLocked]}
+              resizeMode="contain"
+            />
+            <Text style={styles.friendName} numberOfLines={1}>
+              {friend.name}
+            </Text>
+            <Text style={styles.itemCost}>
+              {active
+                ? 'Active'
+                : owned
+                ? 'Owned'
+                : purchasingId === friend.id
+                ? '…'
+                : friend.specialUnlockOnly
+                ? '🏆 Special reward'
+                : friend.cost === 0
+                ? 'Free'
+                : `${friend.cost} coins`}
+            </Text>
+          </Pressable>
+        );
+      }}
+      ListHeaderComponent={
+        <>
       <View style={styles.headerRow}>
         <Text style={styles.heading}>Coffee Friends</Text>
         <Pressable style={styles.coinBadge} onPress={() => setShowCoinInfo(true)} hitSlop={8}>
@@ -311,7 +359,7 @@ export default function PetScreen() {
           <Pressable style={styles.coinInfoBubble} onPress={() => {}}>
             <View style={styles.coinInfoArrow} />
             <Text style={styles.coinInfoTitle}>💰 How to earn coins</Text>
-            <Text style={styles.coinInfoLine}>☕ 1 coin for every hour of active studying</Text>
+            <Text style={styles.coinInfoLine}>☕ 1 coin for every 2 minutes of active studying</Text>
             <Text style={styles.coinInfoLine}>
               🔥 Your weekly streak multiplies it — +20% more coins for every consecutive week you study
             </Text>
@@ -323,15 +371,7 @@ export default function PetScreen() {
         </Pressable>
       </Modal>
 
-      <View style={[styles.previewCard, { backgroundColor: activeBackground.color }]}>
-        <Text style={styles.backgroundBadge}>{activeBackground.emoji}</Text>
-        <View style={styles.previewImageWrap}>
-          <Image
-            source={getCoffeeFriendImage(activeFriend, activeExpression?.id)}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        </View>
+      <View style={styles.previewNameSection}>
         {editingName ? (
           <TextInput
             style={styles.previewNameInput}
@@ -351,6 +391,39 @@ export default function PetScreen() {
                 : `Renaming costs ${RENAME_COST_COINS} coins`}
             </Text>
           </Pressable>
+        )}
+      </View>
+
+      <View
+        style={[
+          styles.previewCard,
+          activeBackground.image
+            ? styles.previewCardWithImage
+            : { backgroundColor: activeBackground.color },
+        ]}
+      >
+        {!!activeBackground.label && (
+          <Text style={styles.backgroundLabel}>{activeBackground.label}</Text>
+        )}
+        {activeBackground.image ? (
+          <View style={styles.previewScene}>
+            <Image source={activeBackground.image} style={styles.previewSceneBg} resizeMode="contain" />
+            <View style={styles.previewBuddyOnScene}>
+              <Image
+                source={getCoffeeFriendImage(activeFriend, activeExpression?.id)}
+                style={styles.previewImageOnScene}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.previewImageWrap}>
+            <Image
+              source={getCoffeeFriendImage(activeFriend, activeExpression?.id)}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          </View>
         )}
       </View>
 
@@ -417,7 +490,10 @@ export default function PetScreen() {
 
       {/* Earned accessories shelf hidden for now — coming back with real designs. */}
 
-      <Text style={styles.sectionTitle}>☕ Collect coffee friends</Text>
+      <View style={styles.sectionTitleRow}>
+        <Image source={UI_ICONS.collectCoffeeFriends} style={styles.sectionTitleIcon} resizeMode="contain" />
+        <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>Collect coffee friends</Text>
+      </View>
       <View style={styles.filterRow}>
         {CATEGORY_FILTERS.map((f) => (
           <Pressable
@@ -436,46 +512,12 @@ export default function PetScreen() {
           </Pressable>
         ))}
       </View>
-      <View style={styles.itemGrid}>
-        {visibleFriends.map((friend) => {
-          const owned = unlockedFriends.has(friend.id);
-          const affordable = owned || (!friend.specialUnlockOnly && coins >= friend.cost);
-          const active = activeFriend.id === friend.id;
-          return (
-            <Pressable
-              key={friend.id}
-              style={[styles.friendCard, !affordable && styles.itemCardDisabled, active && styles.itemCardSelected]}
-              onPress={() => selectOrUnlockFriend(friend)}
-              disabled={!affordable || active || purchasingId === friend.id}
-            >
-              <Image
-                source={friend.images.regular}
-                style={[styles.friendImage, !owned && styles.friendImageLocked]}
-                resizeMode="contain"
-              />
-              <Text style={styles.friendName} numberOfLines={1}>
-                {friend.name}
-              </Text>
-              <Text style={styles.itemCost}>
-                {active
-                  ? 'Active'
-                  : owned
-                  ? 'Owned'
-                  : purchasingId === friend.id
-                  ? '…'
-                  : friend.specialUnlockOnly
-                  ? '🏆 Special reward'
-                  : friend.cost === 0
-                  ? 'Free'
-                  : `${friend.cost} coins`}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <Text style={styles.sectionTitle}>🎭 Expressions</Text>
-      <Text style={styles.coinHint}>
+        </>
+      }
+      ListFooterComponent={
+        <>
+      <Text style={styles.sectionTitle}>Expressions</Text>
+      <Text style={[styles.coinHint, styles.expressionsHint]}>
         Unlock an expression once and use it on any coffee friend you've unlocked.
       </Text>
       <View style={styles.itemGrid}>
@@ -495,9 +537,7 @@ export default function PetScreen() {
                 style={styles.expressionPreviewImage}
                 resizeMode="contain"
               />
-              <Text style={styles.itemLabel}>
-                {expr.emoji} {expr.name}
-              </Text>
+              <Text style={styles.itemLabel}>{expr.name}</Text>
               <Text style={styles.itemCost}>
                 {equipped
                   ? 'Equipped'
@@ -512,7 +552,7 @@ export default function PetScreen() {
         })}
       </View>
 
-      <Text style={styles.sectionTitle}>🏪 Decorate your cafe</Text>
+      <Text style={styles.sectionTitle}>Decorate your cafe</Text>
       <View style={styles.itemGrid}>
         {PET_BACKGROUND_ITEMS.map((bg) => {
           const owned = ownedBackgrounds.has(bg.id);
@@ -530,7 +570,6 @@ export default function PetScreen() {
               onPress={() => selectBackground(bg)}
               disabled={!affordable || selected || purchasingId === bg.id}
             >
-              <Text style={styles.itemEmoji}>{bg.emoji}</Text>
               <Text style={styles.itemLabel}>{bg.label}</Text>
               <Text style={styles.itemCost}>
                 {selected
@@ -547,7 +586,9 @@ export default function PetScreen() {
           );
         })}
       </View>
-    </ScrollView>
+        </>
+      }
+    />
     {adventurePhotoUri && (
       <BuddyPhotoEditor
         visible={adventureEditorVisible}
@@ -693,18 +734,50 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     position: 'relative',
+    overflow: 'hidden',
   },
-  backgroundBadge: { position: 'absolute', top: 16, right: 18, fontSize: 26 },
+  expressionsHint: { marginBottom: 16 },
+  backgroundLabel: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    zIndex: 1,
+    fontSize: 11,
+    fontFamily: FONTS.semiBold,
+    color: COLORS.textMuted,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: RADIUS.pill,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    letterSpacing: 0.3,
+  },
   previewImageWrap: { width: 220, height: 220, alignItems: 'center', justifyContent: 'center' },
   previewImage: { width: 220, height: 220 },
+  // When showing scene art the card drops its padding entirely so the image
+  // is the card: the box's aspect ratio matches the source art's 768x512, so
+  // the full scene fits edge-to-edge with no cropping or letterboxing. The
+  // buddy is rendered after the bg image (so it layers in front), absolutely
+  // anchored to the bottom and centered.
+  previewCardWithImage: { padding: 0 },
+  previewScene: {
+    width: '100%',
+    aspectRatio: 768 / 512,
+    position: 'relative',
+  },
+  previewSceneBg: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  // Slightly negative bottom sinks the buddy into the scene's ground area
+  // (the sprite PNGs carry transparent padding below the saucer, which
+  // otherwise makes them look like they're floating above the floor).
+  previewBuddyOnScene: { position: 'absolute', bottom: -18, left: 0, right: 0, alignItems: 'center' },
+  previewImageOnScene: { width: 150, height: 150 },
   expressionPreviewImage: { width: 56, height: 56 },
-  previewName: { fontSize: 20, fontWeight: '700', color: COLORS.text, marginTop: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
+  previewNameSection: { alignItems: 'center', marginBottom: 14 },
+  previewName: { fontSize: 20, fontWeight: '700', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.8 },
   renameHint: { fontSize: 11, color: COLORS.textMuted, textAlign: 'center', marginTop: 2, fontFamily: FONTS.regular, letterSpacing: 0.2 },
   previewNameInput: {
     fontSize: 20,
     fontWeight: '700',
     color: COLORS.text,
-    marginTop: 10,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
     paddingVertical: 2,
@@ -785,6 +858,8 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
   },
   sectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 10, fontFamily: FONTS.semiBold, letterSpacing: 0.6 },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  sectionTitleIcon: { width: 18, height: 18 },
   filterRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   filterChip: {
     borderWidth: 1,
@@ -798,8 +873,14 @@ const styles = StyleSheet.create({
   filterChipText: { fontSize: 12, fontWeight: '600', color: COLORS.text, fontFamily: FONTS.semiBold, letterSpacing: 0.3 },
   filterChipTextSelected: { color: COLORS.white },
   itemGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  // The friends grid is a virtualized FlatList (numColumns) rather than a
+  // flexWrap View like the smaller expressions/backgrounds grids below — 70+
+  // items rendered eagerly in one ScrollView was the main cause of scroll
+  // jank, especially on bigger screens like iPad where more of the grid is
+  // in view (and therefore decoding images) at once.
+  itemGridRow: { gap: 10, marginBottom: 10 },
   friendCard: {
-    width: '30%',
+    flex: 1,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.borderLight,

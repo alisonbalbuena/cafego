@@ -15,10 +15,8 @@ import { useAuth } from '../hooks/useAuth';
 import { showAlert } from '../utils/alert';
 import { COLORS, RADIUS, FONTS } from '../theme';
 import BackButton from '../components/BackButton';
-import AgeSlider from '../components/AgeSlider';
-import { MIN_AGE_TO_USE_APP } from '../constants';
 
-export default function SignUpScreen({ navigation, route }: any) {
+export default function SignUpScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { signUp } = useAuth();
   const [firstName, setFirstName] = useState('');
@@ -26,10 +24,6 @@ export default function SignUpScreen({ navigation, route }: any) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Pre-filled from the Welcome screen's slider when reached that way, but
-  // this screen re-validates independently — Login's "Sign up" link skips
-  // Welcome entirely, so the age gate has to be enforced here too.
-  const [age, setAge] = useState<number>(route.params?.age ?? 18);
   const [loading, setLoading] = useState(false);
 
   const handleSignUp = async () => {
@@ -41,13 +35,9 @@ export default function SignUpScreen({ navigation, route }: any) {
       showAlert('Weak password', 'Password must be at least 6 characters.');
       return;
     }
-    if (age < MIN_AGE_TO_USE_APP) {
-      showAlert('Age requirement', `You must be ${MIN_AGE_TO_USE_APP} or older to use Study Cafe.`);
-      return;
-    }
     setLoading(true);
     try {
-      await signUp(email.trim(), password, firstName.trim(), lastName.trim(), username.trim(), age);
+      await signUp(email.trim(), password, firstName.trim(), lastName.trim(), username.trim());
     } catch (err: any) {
       showAlert('Sign up failed', err.message);
     } finally {
@@ -127,14 +117,10 @@ export default function SignUpScreen({ navigation, route }: any) {
           />
         </View>
 
-        <View style={styles.ageWrap}>
-          <AgeSlider age={age} onChange={setAge} />
-        </View>
-
         <Pressable
-          style={[styles.button, age < MIN_AGE_TO_USE_APP && styles.buttonDisabled]}
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleSignUp}
-          disabled={loading || age < MIN_AGE_TO_USE_APP}
+          disabled={loading}
         >
           <Text style={styles.buttonText}>{loading ? 'Creating…' : 'Sign up'}</Text>
         </Pressable>
@@ -171,7 +157,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
   row: { flexDirection: 'row', gap: 12 },
-  ageWrap: { marginTop: 4, marginBottom: 16 },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',

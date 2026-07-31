@@ -267,7 +267,10 @@ export default function MapScreen({ navigation }: any) {
                     📍 {session.cafeName} · {session.subject}
                   </Text>
                   <Text style={styles.calloutIntensity}>
-                    {intensityMeta(session.intensity).emoji} {intensityMeta(session.intensity).label}
+                    {intensityMeta(session.intensity).emoji
+                      ? `${intensityMeta(session.intensity).emoji} `
+                      : ''}
+                    {intensityMeta(session.intensity).label}
                   </Text>
                   {busyMeta && (
                     <View style={styles.calloutBusynessRow}>

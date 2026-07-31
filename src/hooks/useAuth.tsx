@@ -21,7 +21,6 @@ import {
 import { auth, db } from '../firebase/config';
 import { UserProfile } from '../types';
 import { DEFAULT_COFFEE_FRIEND_ID } from '../data/coffeeFriends';
-import { MIN_AGE_TO_USE_APP } from '../constants';
 
 const LOYALTY_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -66,8 +65,7 @@ interface AuthContextValue {
     password: string,
     firstName: string,
     lastName: string,
-    username: string,
-    age: number
+    username: string
   ) => Promise<void>;
   signIn: (identifier: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -121,6 +119,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       return;
     }
+    // Each backfill step below is only ever attempted once per mount, even if
+    // the snapshot re-fires with the same stale data before the write lands
+    // (e.g. on a flaky connection that keeps reconnecting) — without this,
+    // a write that keeps failing would be retried on every single snapshot
+    // event, hammering Firestore and re-rendering the whole app in a loop.
+    const attemptedBackfills = new Set<string>();
+    const backfill = async (key: string, payload: Record<string, any>) => {
+      if (attemptedBackfills.has(key)) return;
+      attemptedBackfills.add(key);
+      try {
+        await setDoc(doc(db, 'users', user.uid), payload, { merge: true });
+      } catch {
+        // Best-effort — the next successful write elsewhere (or app restart)
+        // will pick this backfill back up; we just don't retry-storm here.
+      }
+    };
+
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), async (snapshot) => {
       if (!snapshot.exists()) return;
       const data = snapshot.data() as Partial<UserProfile>;
@@ -131,47 +146,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const lastName = data.lastName ?? rest.join(' ');
         const loyaltyCode = data.loyaltyCode ?? (await generateUniqueLoyaltyCode());
         const username = data.username ?? (await generateUniqueUsername(firstName, lastName));
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            role: data.role ?? 'customer',
-            loyaltyCode,
-            firstName,
-            lastName,
-            username,
-            bio: data.bio ?? '',
-          },
-          { merge: true }
-        );
+        await backfill('identity', {
+          role: data.role ?? 'customer',
+          loyaltyCode,
+          firstName,
+          lastName,
+          username,
+          bio: data.bio ?? '',
+        });
         return;
       }
       if (data.petCoins === undefined) {
         // Backfill accounts created before the coin/coffee-friends game existed.
-        await setDoc(
-          doc(db, 'users', user.uid),
-          {
-            petCoins: 0,
-            unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID],
-            activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID,
-            allNighterCount: 0,
-          },
-          { merge: true }
-        );
+        await backfill('petCoins', {
+          petCoins: 0,
+          unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID],
+          activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID,
+          allNighterCount: 0,
+        });
         return;
       }
       if (data.unlockedCoffeeFriends === undefined) {
         // Backfill accounts created before the buddy system was replaced with
         // unlockable coffee friends.
-        await setDoc(
-          doc(db, 'users', user.uid),
-          { unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID], activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID },
-          { merge: true }
-        );
+        await backfill('unlockedCoffeeFriends', {
+          unlockedCoffeeFriends: [DEFAULT_COFFEE_FRIEND_ID],
+          activeCoffeeFriend: DEFAULT_COFFEE_FRIEND_ID,
+        });
         return;
       }
       if (data.allNighterCount === undefined) {
         // Backfill accounts created before the all-nighter tracker existed.
-        await setDoc(doc(db, 'users', user.uid), { allNighterCount: 0 }, { merge: true });
+        await backfill('allNighterCount', { allNighterCount: 0 });
         return;
       }
       if (data.username) {
@@ -187,15 +193,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string,
     firstName: string,
     lastName: string,
-    username: string,
-    age: number
+    username: string
   ) => {
     const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (!cleanUsername) {
       throw new Error('Username can only contain letters, numbers, and underscores.');
-    }
-    if (age < MIN_AGE_TO_USE_APP) {
-      throw new Error(`You must be ${MIN_AGE_TO_USE_APP} or older to use Study Cafe.`);
     }
 
     const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -225,7 +227,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       username: cleanUsername,
       bio: '',
       email,
-      age,
       createdAt: serverTimestamp(),
       role: 'customer',
       loyaltyCode,
